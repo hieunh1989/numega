@@ -1,0 +1,13 @@
+{
+  "name": "AgriCalc Feed Formula Calculator",
+  "short_name": "AgriCalc",
+  "description": "Tính toán công thức thức ăn chăn nuôi online và offline.",
+  "lang": "vi",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7faf8",
+  "theme_color": "#006c4e",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
