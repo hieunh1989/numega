@@ -90,7 +90,7 @@ export default function Home() {
     if (stored) {
       try { setFormula(JSON.parse(stored)); } catch { /* keep safe defaults */ }
     }
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => undefined);
     const syncStatus = () => setOnline(navigator.onLine);
     const captureInstall = (event: Event) => {
       event.preventDefault();
