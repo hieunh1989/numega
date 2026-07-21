@@ -49,3 +49,21 @@ test("ships all PostgreSQL-backed Next.js API routes", async () => {
   ];
   await Promise.all(routes.map(async (route) => assert.ok((await read(route)).length > 0, route)));
 });
+
+test("ships an installable PWA and a dedicated phone install route", async () => {
+  const [manifestText, installPage, serviceWorker] = await Promise.all([
+    read("public/manifest.webmanifest"),
+    read("app/install/page.tsx"),
+    read("public/sw.js"),
+  ]);
+  const manifest = JSON.parse(manifestText);
+  assert.equal(manifest.display, "standalone");
+  assert.equal(manifest.start_url, "/");
+  assert.ok(manifest.icons.some((icon) => icon.sizes === "192x192" && icon.type === "image/png"));
+  assert.ok(manifest.icons.some((icon) => icon.sizes === "512x512" && icon.type === "image/png"));
+  assert.ok(manifest.icons.some((icon) => icon.purpose === "maskable"));
+  assert.match(installPage, /beforeinstallprompt/);
+  assert.match(installPage, /installPrompt\.prompt\(\)/);
+  assert.match(installPage, /Thêm vào Màn hình chính/);
+  assert.match(serviceWorker, /\/install/);
+});

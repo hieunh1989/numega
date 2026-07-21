@@ -7,7 +7,13 @@ export const metadata: Metadata = {
   applicationName: "Numega",
   manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, statusBarStyle: "default", title: "Numega" },
-  icons: { icon: "/favicon.svg", apple: "/favicon.svg" },
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/icons/pwa/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
   openGraph: {
     title: "Numega · Feed Formula Calculator",
     description: "Tạo công thức, kiểm tra dinh dưỡng và xem đóng góp nguyên liệu ngay cả khi offline.",

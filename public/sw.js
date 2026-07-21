@@ -1,8 +1,12 @@
-const CACHE = "numega-v5";
+const CACHE = "numega-v6";
 const APP_SHELL = [
   "/",
+  "/install",
   "/manifest.webmanifest",
   "/favicon.svg",
+  "/apple-touch-icon.png",
+  "/icons/pwa/icon-192.png",
+  "/icons/pwa/icon-512.png",
   "/numega-logo.png",
   "/icons/categories/cereals.png",
   "/icons/categories/protein-sources.png",
