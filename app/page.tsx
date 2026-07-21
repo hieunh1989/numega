@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { type MouseEvent, useEffect, useMemo, useState } from "react";
 import rawIngredients from "./data/ingredients.json";
+import { apiRequest } from "./lib/api";
 
 type Ingredient = (typeof rawIngredients)[number];
 type FormulaItem = { id: string; inclusion: number };
-type ResultTab = "overview" | "groups" | "top";
+type ResultTab = "overview" | "groups";
+type AuthUser = { id: string; full_name: string; email: string; role: "Admin" | "User"; status: string };
 
 const CATEGORY_ORDER = [
   "Cereals",
@@ -50,12 +52,12 @@ const INITIAL_FORMULA: FormulaItem[] = [
 ];
 
 const icons: Record<string, string> = {
-  Cereals: "🌾",
-  "Protein Sources": "◉",
-  "Energy (Oils & Fats)": "●",
-  Minerals: "◇",
-  "Amino Acids": "Aa",
-  Others: "+",
+  Cereals: "/icons/categories/cereals.png",
+  "Protein Sources": "/icons/categories/protein-sources.png",
+  "Energy (Oils & Fats)": "/icons/categories/oils-fats.png",
+  Minerals: "/icons/categories/minerals.png",
+  "Amino Acids": "/icons/categories/amino-acids.png",
+  Others: "/icons/categories/others.png",
 };
 
 function numberValue(ingredient: Ingredient, key: string) {
@@ -73,6 +75,9 @@ function MiniIcon({ children }: { children: React.ReactNode }) {
 }
 
 export default function Home() {
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [ingredients, setIngredients] = useState<Ingredient[]>(rawIngredients);
+  const [dataSource, setDataSource] = useState<"database" | "offline">("offline");
   const [formula, setFormula] = useState<FormulaItem[]>(INITIAL_FORMULA);
   const [expanded, setExpanded] = useState<string>("Cereals");
   const [pickerCategory, setPickerCategory] = useState<string | null>(null);
@@ -91,6 +96,18 @@ export default function Home() {
       try { setFormula(JSON.parse(stored)); } catch { /* keep safe defaults */ }
     }
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+    const cachedIngredients = localStorage.getItem("numega-ingredients");
+    if (cachedIngredients) {
+      try { setIngredients(JSON.parse(cachedIngredients)); } catch { /* use embedded database */ }
+    }
+    apiRequest<Ingredient[]>("/api/ingredients?active=true")
+      .then((databaseIngredients) => {
+        setIngredients(databaseIngredients);
+        setDataSource("database");
+        localStorage.setItem("numega-ingredients", JSON.stringify(databaseIngredients));
+      })
+      .catch(() => setDataSource("offline"));
+    apiRequest<AuthUser>("/api/auth/me").then(setAuthUser).catch(() => setAuthUser(null));
     const syncStatus = () => setOnline(navigator.onLine);
     const captureInstall = (event: Event) => {
       event.preventDefault();
@@ -112,8 +129,8 @@ export default function Home() {
   }, [formula]);
 
   const ingredientMap = useMemo(
-    () => new Map(rawIngredients.map((ingredient) => [ingredient["Ingredient ID"], ingredient])),
-    [],
+    () => new Map(ingredients.map((ingredient) => [ingredient["Ingredient ID"], ingredient])),
+    [ingredients],
   );
 
   const rows = useMemo(
@@ -134,13 +151,19 @@ export default function Home() {
       category,
       inclusion: categoryRows.reduce((sum, row) => sum + row.inclusion, 0),
       abc4: categoryRows.reduce((sum, row) => sum + numberValue(row.ingredient, "ABC4 (mEq/kg)") * row.inclusion / 100, 0),
-      protein: categoryRows.reduce((sum, row) => sum + numberValue(row.ingredient, "Crude Protein (%)") * row.inclusion / 100, 0),
     };
   }), [rows]);
 
   const updateInclusion = (id: string, value: string) => {
     const parsed = Math.max(0, Math.min(100, Number(value) || 0));
     setFormula((current) => current.map((item) => item.id === id ? { ...item, inclusion: parsed } : item));
+  };
+
+  const toggleCategory = (category: string, event: MouseEvent<HTMLButtonElement>) => {
+    const opening = expanded !== category;
+    const card = event.currentTarget.closest(".category-card");
+    setExpanded(opening ? category : "");
+    if (opening) window.requestAnimationFrame(() => card?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
 
   const removeIngredient = (id: string) => setFormula((current) => current.filter((item) => item.id !== id));
@@ -172,8 +195,8 @@ export default function Home() {
   };
 
   const shareResult = async () => {
-    const text = `AgriCalc: Protein ${formatValue(totals["Crude Protein (%)"], "%")}% · ABC4 ${formatValue(totals["ABC4 (mEq/kg)"], "mEq/kg")} mEq/kg`;
-    if (navigator.share) await navigator.share({ title: "Kết quả công thức AgriCalc", text });
+    const text = `Numega: Protein ${formatValue(totals["Crude Protein (%)"], "%")}% · ABC4 ${formatValue(totals["ABC4 (mEq/kg)"], "mEq/kg")} mEq/kg`;
+    if (navigator.share) await navigator.share({ title: "Kết quả công thức Numega", text });
     else await navigator.clipboard.writeText(text);
   };
 
@@ -183,25 +206,42 @@ export default function Home() {
     setInstallPrompt(null);
   };
 
+  const logout = async () => {
+    await apiRequest("/api/auth/logout", { method: "POST" }).catch(() => undefined);
+    setAuthUser(null);
+  };
+
   const detail = detailId ? rows.find((row) => row.id === detailId) : undefined;
-  const maxAbc4 = Math.max(1, ...categoryResults.map((item) => Math.abs(item.abc4)));
-  const maxProtein = Math.max(1, ...categoryResults.map((item) => Math.abs(item.protein)));
+  const totalAbc4 = totals["ABC4 (mEq/kg)"] || 0;
+  const categoryMax = Math.max(0, ...categoryResults.map((item) => item.abc4));
+  const categoryMin = Math.min(0, ...categoryResults.map((item) => item.abc4));
+  const categoryRange = Math.max(1, categoryMax - categoryMin);
+  const categoryZeroFromBottom = Math.abs(categoryMin) / categoryRange * 100;
+  const categoryZeroFromTop = categoryMax / categoryRange * 100;
+  const topContributors = [...rows]
+    .map((row) => ({ ...row, abc4: numberValue(row.ingredient, "ABC4 (mEq/kg)") * row.inclusion / 100 }))
+    .sort((a, b) => b.abc4 - a.abc4)
+    .slice(0, 10);
+  const topMax = Math.max(0, ...topContributors.map((item) => item.abc4));
+  const topMin = Math.min(0, ...topContributors.map((item) => item.abc4));
+  const topRange = Math.max(1, topMax - topMin);
+  const topZero = topMax / topRange * 100;
+  const negativeAbc4Rows = rows.filter((row) => row.inclusion > 0 && numberValue(row.ingredient, "ABC4 (mEq/kg)") < 0);
 
   return (
     <main className="app-shell">
       {!showResults ? (
         <>
           <header className="app-header">
-            <button className="icon-button" aria-label="Mở menu"><span>☰</span></button>
-            <div className="brand-lockup">
-              <span className="brand-mark">A</span>
-              <div><p>AgriCalc</p><h1>Feed Formula Calculator</h1></div>
-            </div>
-            <div className="header-actions">
-              {!online && <span className="offline-pill">Offline</span>}
-              {installPrompt && <button className="install-button" onClick={triggerInstall}>Cài app</button>}
-              <button className="avatar-button" aria-label="Tài khoản">AN</button>
-            </div>
+            <a className="brand-lockup" href="/" aria-label="Numega"><img src="/numega-logo.png" alt="Numega" /></a>
+            {authUser && (
+              <div className="header-actions">
+                {(!online || dataSource === "offline") && <span className="offline-pill">Dữ liệu offline</span>}
+                {installPrompt && <button className="install-button" onClick={triggerInstall}>Cài app</button>}
+                {authUser.role === "Admin" && <a className="admin-link" href="/admin" aria-label="Mở quản trị">⚙</a>}
+                <button className="avatar-button" onClick={logout} aria-label={`Đăng xuất ${authUser.full_name}`} title="Đăng xuất">{authUser.full_name.split(" ").slice(-2).map((word) => word[0]).join("").toUpperCase()}</button>
+              </div>
+            )}
           </header>
 
           <section className={`mix-status ${isValid ? "valid" : "warning"}`}>
@@ -220,9 +260,9 @@ export default function Home() {
               const isOpen = expanded === category;
               return (
                 <article className={`category-card ${isOpen ? "expanded" : ""}`} key={category}>
-                  <button className="category-heading" onClick={() => setExpanded(isOpen ? "" : category)} aria-expanded={isOpen}>
+                  <button className="category-heading" onClick={(event) => toggleCategory(category, event)} aria-expanded={isOpen}>
                     <span className="chevron">›</span>
-                    <span className="category-icon">{icons[category]}</span>
+                    <span className="category-icon"><img src={icons[category]} alt="" aria-hidden="true" /></span>
                     <strong>{index + 1}. {CATEGORY_LABELS[category]}</strong>
                     <span className="count-badge">{categoryRows.length} NL · {categoryTotal.toLocaleString("vi-VN")}%</span>
                   </button>
@@ -266,8 +306,7 @@ export default function Home() {
             <div className="success-pill">✓ Tổng tỷ lệ: 100%</div>
             <nav className="result-tabs" aria-label="Chế độ xem kết quả">
               <button className={resultTab === "overview" ? "active" : ""} onClick={() => setResultTab("overview")}>Tổng quan</button>
-              <button className={resultTab === "groups" ? "active" : ""} onClick={() => setResultTab("groups")}>Nhóm chất</button>
-              <button className={resultTab === "top" ? "active" : ""} onClick={() => setResultTab("top")}>Top NL</button>
+              <button className={resultTab === "groups" ? "active" : ""} onClick={() => setResultTab("groups")}>Chi tiết</button>
             </nav>
 
             {resultTab === "overview" && (
@@ -303,39 +342,55 @@ export default function Home() {
             )}
 
             {resultTab === "groups" && (
-              <div className="chart-stack">
-                <ResultSection title="Biểu đồ Bar · Đóng góp ABC4">
-                  <div className="bar-chart">
-                    {categoryResults.map((item) => <div className="bar-row" key={item.category}><span>{CATEGORY_LABELS[item.category]}</span><div><i style={{ width: `${Math.abs(item.abc4) / maxAbc4 * 100}%` }} /></div><strong>{item.abc4.toFixed(1)}</strong></div>)}
-                  </div>
-                </ResultSection>
-                <ResultSection title="Biểu đồ Line · Protein theo nhóm">
-                  <div className="line-chart" aria-label="Biểu đồ đường đóng góp protein">
-                    <div className="line-grid" />
-                    {categoryResults.map((item, index) => {
-                      const x = categoryResults.length === 1 ? 0 : index / (categoryResults.length - 1) * 100;
-                      const y = 100 - item.protein / maxProtein * 82 - 9;
-                      const next = categoryResults[index + 1];
-                      const nextX = next ? (index + 1) / (categoryResults.length - 1) * 100 : x;
-                      const nextY = next ? 100 - next.protein / maxProtein * 82 - 9 : y;
-                      const width = Math.hypot(nextX - x, nextY - y);
-                      const angle = Math.atan2(nextY - y, nextX - x) * 180 / Math.PI;
-                      return <div key={item.category}><span className="line-point" style={{ left: `${x}%`, top: `${y}%` }} title={`${CATEGORY_LABELS[item.category]}: ${item.protein.toFixed(2)}%`} />{next && <i className="line-segment" style={{ left: `${x}%`, top: `${y}%`, width: `${width}%`, transform: `rotate(${angle}deg)` }} />}</div>;
+              <div className="detail-results">
+                <ResultSection title="Đóng góp ABC4 theo nhóm">
+                  {negativeAbc4Rows.length > 0 && (
+                    <div className="chart-note warning">
+                      <strong>Giá trị âm không phải lỗi.</strong>
+                      <span>
+                        {negativeAbc4Rows.map((row) => `${row.ingredient["Ingredient Name"]} ${(numberValue(row.ingredient, "ABC4 (mEq/kg)") * row.inclusion / 100).toFixed(1)} mEq/kg`).join(" · ")} đang làm giảm ABC4 tổng.
+                      </span>
+                    </div>
+                  )}
+                  <div className="category-summary-table">
+                    <div className="summary-head"><span>Nhóm nguyên liệu</span><span>ABC4</span><span>% đóng góp</span></div>
+                    {categoryResults.map((item) => {
+                      const percent = Math.abs(totalAbc4) > 0.0000001 ? item.abc4 / totalAbc4 * 100 : null;
+                      return <div className="summary-row" key={item.category}><strong>{CATEGORY_LABELS[item.category]}</strong><span className={item.abc4 < 0 ? "negative-value" : ""}>{item.abc4.toFixed(1)}</span><span className={percent !== null && percent < 0 ? "negative-value" : ""}>{percent === null ? "—" : `${percent.toFixed(1)}%`}</span></div>;
                     })}
                   </div>
-                  <div className="line-labels">{categoryResults.map((item) => <span key={item.category}>{CATEGORY_LABELS[item.category].split(" ")[0]}</span>)}</div>
+                </ResultSection>
+
+                <ResultSection title="ABC4 Contribution by Category">
+                  <div className="category-column-chart" role="img" aria-label="Biểu đồ cột đóng góp ABC4 theo nhóm">
+                    <div className="column-grid" />
+                    <div className="column-series">
+                      {categoryResults.map((item, index) => {
+                        const height = Math.abs(item.abc4) / categoryRange * 100;
+                        const colors = ["yellow", "green", "teal", "gray", "orange", "blue"];
+                        return <div className="column-item" key={item.category}><div className="column-space"><span className="zero-axis" style={{ bottom: `${categoryZeroFromBottom}%` }} /><i className={`${item.abc4 < 0 ? "negative" : "positive"} ${colors[index]}`} style={item.abc4 < 0 ? { top: `${categoryZeroFromTop}%`, height: `${height}%` } : { bottom: `${categoryZeroFromBottom}%`, height: `${height}%` }}><b>{item.abc4.toFixed(1)}</b></i></div><span>{CATEGORY_LABELS[item.category]}</span></div>;
+                      })}
+                    </div>
+                  </div>
+                </ResultSection>
+
+                <ResultSection title="Top 10 ABC4 Contributors">
+                  <div className="top-table">
+                    <div className="top-table-head"><span>Hạng</span><span>Nguyên liệu</span><span>Inclusion</span><span>ABC4</span></div>
+                    {topContributors.map((item, index) => <div className="top-table-row" key={item.id}><span>{index + 1}</span><strong>{item.ingredient["Ingredient Name"]}</strong><span>{item.inclusion.toFixed(1)}%</span><span className={item.abc4 < 0 ? "negative-value" : ""}>{item.abc4.toFixed(1)}</span></div>)}
+                    {Array.from({ length: Math.max(0, 10 - topContributors.length) }, (_, index) => <div className="top-table-row empty" key={`empty-${index}`}><span>{topContributors.length + index + 1}</span><strong>—</strong><span>—</span><span>—</span></div>)}
+                  </div>
+                </ResultSection>
+
+                <ResultSection title="Top 10 ABC4 Contributors · Chart">
+                  <div className="top-horizontal-chart" role="img" aria-label="Biểu đồ ngang Top 10 nguyên liệu đóng góp ABC4">
+                    {[...topContributors].reverse().map((item) => {
+                      const width = Math.abs(item.abc4) / topRange * 100;
+                      return <div className="top-bar-row" key={item.id}><span>{item.ingredient["Ingredient Name"]}</span><div className="top-bar-track"><i className={item.abc4 < 0 ? "negative" : "positive"} style={item.abc4 < 0 ? { left: `${topZero}%`, width: `${width}%` } : { right: `${100 - topZero}%`, width: `${width}%` }} /><b style={{ left: `${topZero}%` }} /></div><strong className={item.abc4 < 0 ? "negative-value" : ""}>{item.abc4.toFixed(1)}</strong></div>;
+                    })}
+                  </div>
                 </ResultSection>
               </div>
-            )}
-
-            {resultTab === "top" && (
-              <ResultSection title="Xếp hạng đóng góp ABC4">
-                <div className="ranking-list">
-                  {[...rows].sort((a, b) => numberValue(b.ingredient, "ABC4 (mEq/kg)") * b.inclusion - numberValue(a.ingredient, "ABC4 (mEq/kg)") * a.inclusion).map((row, index) => (
-                    <div className="ranking-row" key={row.id}><span>{index + 1}</span><div><strong>{row.ingredient["Ingredient Name"]}</strong><small>{row.inclusion}% tỷ lệ phối trộn</small></div><b>{(numberValue(row.ingredient, "ABC4 (mEq/kg)") * row.inclusion / 100).toFixed(1)} <em>mEq/kg</em></b></div>
-                  ))}
-                </div>
-              </ResultSection>
             )}
 
             <button className="save-button" onClick={saveResult}>▣ Lưu kết quả</button>
@@ -350,7 +405,7 @@ export default function Home() {
             <header><h2 id="picker-title">Chọn nguyên liệu — {CATEGORY_LABELS[pickerCategory]}</h2><button onClick={() => setPickerCategory(null)} aria-label="Đóng">×</button></header>
             <label className="search-field"><span>⌕</span><input autoFocus value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm kiếm nguyên liệu..." /></label>
             <div className="picker-list">
-              {rawIngredients.filter((ingredient) => ingredient.Category === pickerCategory && ingredient["Ingredient Name"].toLowerCase().includes(search.toLowerCase())).map((ingredient) => {
+              {ingredients.filter((ingredient) => ingredient.Category === pickerCategory && ingredient["Ingredient Name"].toLowerCase().includes(search.toLowerCase())).map((ingredient) => {
                 const id = ingredient["Ingredient ID"];
                 const selected = pickerSelection.includes(id);
                 const alreadyUsed = formula.some((item) => item.id === id);

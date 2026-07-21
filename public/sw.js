@@ -1,5 +1,16 @@
-const CACHE = "agricalc-v1";
-const APP_SHELL = ["/", "/manifest.webmanifest", "/favicon.svg"];
+const CACHE = "numega-v4";
+const APP_SHELL = [
+  "/",
+  "/manifest.webmanifest",
+  "/favicon.svg",
+  "/numega-logo.png",
+  "/icons/categories/cereals.png",
+  "/icons/categories/protein-sources.png",
+  "/icons/categories/oils-fats.png",
+  "/icons/categories/minerals.png",
+  "/icons/categories/amino-acids.png",
+  "/icons/categories/others.png",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(APP_SHELL)).then(() => self.skipWaiting()));

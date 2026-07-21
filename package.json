@@ -1,21 +1,31 @@
 {
-  "name": "site-creator-vinext-starter",
+  "name": "numega-pwa",
   "version": "0.1.0",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
   },
   "scripts": {
-    "dev": "vinext dev",
+    "dev": "concurrently -n web,api -c green,cyan \"npm:dev:web\" \"npm:dev:api\"",
+    "dev:web": "vinext dev --host 0.0.0.0",
+    "dev:api": "node --watch server/index.mjs",
     "build": "vinext build",
     "start": "vinext start",
+    "start:api": "node server/index.mjs",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f postgres",
     "test": "npm run build && node --test tests/rendered-html.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
+    "concurrently": "^10.0.3",
+    "cors": "^2.8.6",
     "drizzle-orm": "0.45.2",
+    "express": "^5.2.1",
     "next": "16.2.6",
+    "pg": "^8.22.0",
     "react": "19.2.6",
     "react-dom": "19.2.6"
   },

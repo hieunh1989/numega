@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: numega-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: numega
+      POSTGRES_USER: numega
+      POSTGRES_PASSWORD: numega_local
+    ports:
+      - "5433:5432"
+    volumes:
+      - numega_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U numega -d numega"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  numega_postgres_data:
