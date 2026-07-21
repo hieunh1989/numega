@@ -1,32 +1,42 @@
 import { randomUUID } from "node:crypto";
-import { readFile } from "node:fs/promises";
-import path from "node:path";
-import pg from "pg";
-import { hashPassword } from "./security.mjs";
+import { Pool, type QueryResultRow } from "pg";
+import rawIngredients from "@/app/data/ingredients.json";
+import { hashPassword } from "./security";
 
-const { Pool } = pg;
+const DEFAULT_DATABASE_URL = "postgresql://numega:numega_local@localhost:5433/numega";
 
-export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || "postgresql://numega:numega_local@localhost:5433/numega",
-  max: 10,
+type NumegaGlobal = typeof globalThis & {
+  numegaPool?: Pool;
+  numegaDatabaseReady?: Promise<void>;
+};
+
+const globalForDatabase = globalThis as NumegaGlobal;
+
+export const pool = globalForDatabase.numegaPool ?? new Pool({
+  connectionString: process.env.DATABASE_URL || DEFAULT_DATABASE_URL,
+  max: Number(process.env.DATABASE_POOL_MAX || (process.env.NODE_ENV === "production" ? 3 : 10)),
+  idleTimeoutMillis: 30_000,
+  connectionTimeoutMillis: 10_000,
 });
 
-export const categorySeeds = [
+if (process.env.NODE_ENV !== "production") globalForDatabase.numegaPool = pool;
+
+export const ingredientDatabaseColumns = [
+  "abc3", "abc4", "dry_matter", "moisture", "crude_protein", "crude_fat", "crude_fiber", "ash",
+  "calcium", "total_phosphorus", "available_phosphorus", "sodium", "potassium", "chloride", "magnesium",
+  "me_poultry", "me_swine", "de", "lysine", "methionine", "methionine_cysteine", "threonine", "tryptophan", "valine",
+] as const;
+
+const categorySeeds = [
   ["cereals", "Cereals", "Ngũ cốc và nguồn tinh bột", 1],
   ["protein-sources", "Protein Sources", "Nguồn cung cấp protein", 2],
   ["energy-oils-fats", "Energy (Oils & Fats)", "Dầu, mỡ và nguồn năng lượng", 3],
   ["minerals", "Minerals", "Khoáng đa lượng và vi lượng", 4],
   ["amino-acids", "Amino Acids", "Axit amin bổ sung", 5],
   ["others", "Others", "Premix, enzyme và nguyên liệu khác", 6],
-];
+] as const;
 
-const nutrientColumns = [
-  "abc3", "abc4", "dry_matter", "moisture", "crude_protein", "crude_fat", "crude_fiber", "ash",
-  "calcium", "total_phosphorus", "available_phosphorus", "sodium", "potassium", "chloride", "magnesium",
-  "me_poultry", "me_swine", "de", "lysine", "methionine", "methionine_cysteine", "threonine", "tryptophan", "valine",
-];
-
-export async function initializeDatabase() {
+async function initializeDatabase() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS categories (
       id TEXT PRIMARY KEY,
@@ -106,7 +116,8 @@ export async function initializeDatabase() {
     await pool.query(
       `INSERT INTO categories (id, slug, name, description, sort_order)
        VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (name) DO UPDATE SET slug = EXCLUDED.slug, description = EXCLUDED.description, sort_order = EXCLUDED.sort_order`,
+       ON CONFLICT (id) DO UPDATE SET slug=EXCLUDED.slug, name=EXCLUDED.name,
+       description=EXCLUDED.description, sort_order=EXCLUDED.sort_order`,
       [slug, slug, name, description, sortOrder],
     );
   }
@@ -114,33 +125,30 @@ export async function initializeDatabase() {
   const ingredientCount = Number((await pool.query("SELECT COUNT(*) AS count FROM ingredients")).rows[0].count);
   if (ingredientCount === 0) await seedIngredients();
 
-  const userCount = Number((await pool.query("SELECT COUNT(*) AS count FROM users")).rows[0].count);
-  if (userCount === 0) {
-    const passwordHash = await hashPassword("Numega@123");
+  const defaultAdminEmail = process.env.SEED_ADMIN_EMAIL || (process.env.NODE_ENV !== "production" ? "admin@numega.local" : "");
+  const defaultAdminPassword = process.env.SEED_ADMIN_PASSWORD || (process.env.NODE_ENV !== "production" ? "Numega@123" : "");
+  if (defaultAdminEmail && defaultAdminPassword) {
+    const passwordHash = await hashPassword(defaultAdminPassword);
     await pool.query(
-      "INSERT INTO users (id, full_name, email, role, status, password_hash) VALUES ($1, $2, $3, 'Admin', 'Active', $4)",
-      [randomUUID(), "Numega Admin", "admin@numega.local", passwordHash],
+      `INSERT INTO users (id, full_name, email, role, status, password_hash)
+       VALUES ($1, $2, $3, 'Admin', 'Active', $4)
+       ON CONFLICT (email) DO UPDATE SET password_hash=COALESCE(users.password_hash, EXCLUDED.password_hash)`,
+      [randomUUID(), "Numega Admin", defaultAdminEmail.toLowerCase(), passwordHash],
     );
-  }
-  const adminWithoutPassword = await pool.query("SELECT id FROM users WHERE email=$1 AND password_hash IS NULL", ["admin@numega.local"]);
-  if (adminWithoutPassword.rowCount) {
-    const passwordHash = await hashPassword("Numega@123");
-    await pool.query("UPDATE users SET password_hash=$1, updated_at=NOW() WHERE id=$2", [passwordHash, adminWithoutPassword.rows[0].id]);
   }
 }
 
 async function seedIngredients() {
-  const filePath = path.resolve(process.cwd(), "app/data/ingredients.json");
-  const source = JSON.parse(await readFile(filePath, "utf8"));
-  const categoryRows = (await pool.query("SELECT id, name FROM categories")).rows;
+  const source = rawIngredients as Record<string, unknown>[];
+  const categoryRows = (await pool.query("SELECT id, name FROM categories")).rows as { id: string; name: string }[];
   const categoryByName = new Map(categoryRows.map((row) => [row.name, row.id]));
   const sql = `INSERT INTO ingredients (
-    id, name, scientific_name, category_id, origin, status, notes, ${nutrientColumns.join(", ")}
+    id, name, scientific_name, category_id, origin, status, notes, ${ingredientDatabaseColumns.join(", ")}
   ) VALUES (${Array.from({ length: 31 }, (_, index) => `$${index + 1}`).join(", ")}) ON CONFLICT (id) DO NOTHING`;
 
   for (const item of source) {
     const values = [
-      item["Ingredient ID"], item["Ingredient Name"], item["Scientific Name"] || "", categoryByName.get(item.Category),
+      item["Ingredient ID"], item["Ingredient Name"], item["Scientific Name"] || "", categoryByName.get(String(item.Category)),
       item.Origin || "Local", item.Status || "Active", item.Notes || "",
       item["ABC3 (mEq/kg)"], item["ABC4 (mEq/kg)"], item["Dry Matter (%)"], item["Moisture (%)"],
       item["Crude Protein (%)"], item["Crude Fat (%)"], item["Crude Fiber (%)"], item["Ash (%)"], item["Calcium (%)"],
@@ -153,7 +161,17 @@ async function seedIngredients() {
   }
 }
 
-export function ingredientToExcelShape(row) {
+export async function ensureDatabase() {
+  if (!globalForDatabase.numegaDatabaseReady) {
+    globalForDatabase.numegaDatabaseReady = initializeDatabase().catch((error) => {
+      globalForDatabase.numegaDatabaseReady = undefined;
+      throw error;
+    });
+  }
+  await globalForDatabase.numegaDatabaseReady;
+}
+
+export function ingredientToExcelShape(row: QueryResultRow) {
   return {
     "Ingredient ID": row.id,
     "Ingredient Name": row.name,
@@ -189,5 +207,3 @@ export function ingredientToExcelShape(row) {
     "Valine (%)": row.valine,
   };
 }
-
-export const ingredientDatabaseColumns = nutrientColumns;

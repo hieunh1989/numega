@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import Image from "next/image";
 import { FormEvent, useEffect, useState } from "react";
 import { apiRequest } from "../lib/api";
 
@@ -45,9 +47,9 @@ export default function LoginPage() {
   return (
     <main className="login-shell">
       <section className="login-card">
-        <a className="login-logo" href="/" aria-label="Về Numega">
-          <img src="/numega-logo.png" alt="Numega" />
-        </a>
+        <Link className="login-logo" href="/" aria-label="Về Numega">
+          <Image src="/numega-logo.png" alt="Numega" width={588} height={126} priority />
+        </Link>
         <div className="login-heading">
           <span>NUMEGA FEED FORMULA</span>
           <h1>Đăng nhập</h1>
@@ -68,7 +70,7 @@ export default function LoginPage() {
           {error && <div className="login-error" role="alert">{error}</div>}
           <button className="login-submit" type="submit" disabled={submitting}>{submitting ? "Đang đăng nhập…" : "Đăng nhập"}</button>
         </form>
-        <a className="login-back" href="/">← Quay lại trang tính</a>
+        <Link className="login-back" href="/">← Quay lại trang tính</Link>
       </section>
     </main>
   );

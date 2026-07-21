@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import Image from "next/image";
 import { type MouseEvent, useEffect, useMemo, useState } from "react";
 import rawIngredients from "./data/ingredients.json";
 import { apiRequest } from "./lib/api";
@@ -233,12 +235,12 @@ export default function Home() {
       {!showResults ? (
         <>
           <header className="app-header">
-            <a className="brand-lockup" href="/" aria-label="Numega"><img src="/numega-logo.png" alt="Numega" /></a>
+            <Link className="brand-lockup" href="/" aria-label="Numega"><Image src="/numega-logo.png" alt="Numega" width={588} height={126} priority /></Link>
             {authUser && (
               <div className="header-actions">
                 {(!online || dataSource === "offline") && <span className="offline-pill">Dữ liệu offline</span>}
                 {installPrompt && <button className="install-button" onClick={triggerInstall}>Cài app</button>}
-                {authUser.role === "Admin" && <a className="admin-link" href="/admin" aria-label="Mở quản trị">⚙</a>}
+                {authUser.role === "Admin" && <Link className="admin-link" href="/admin" aria-label="Mở quản trị">⚙</Link>}
                 <button className="avatar-button" onClick={logout} aria-label={`Đăng xuất ${authUser.full_name}`} title="Đăng xuất">{authUser.full_name.split(" ").slice(-2).map((word) => word[0]).join("").toUpperCase()}</button>
               </div>
             )}
@@ -262,7 +264,7 @@ export default function Home() {
                 <article className={`category-card ${isOpen ? "expanded" : ""}`} key={category}>
                   <button className="category-heading" onClick={(event) => toggleCategory(category, event)} aria-expanded={isOpen}>
                     <span className="chevron">›</span>
-                    <span className="category-icon"><img src={icons[category]} alt="" aria-hidden="true" /></span>
+                    <span className="category-icon"><Image src={icons[category]} alt="" aria-hidden="true" width={64} height={64} /></span>
                     <strong>{index + 1}. {CATEGORY_LABELS[category]}</strong>
                     <span className="count-badge">{categoryRows.length} NL · {categoryTotal.toLocaleString("vi-VN")}%</span>
                   </button>

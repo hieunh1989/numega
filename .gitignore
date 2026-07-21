@@ -13,9 +13,8 @@
 # testing
 /coverage
 
-# next.js / vinext
+# next.js
 /.next/
-/.vinext/
 /out/
 
 # production
@@ -36,9 +35,8 @@ yarn-error.log*
 .env*
 !.env.example
 
-# vercel / cloudflare
+# vercel
 .vercel
-/.wrangler/
 
 # typescript
 next-env.d.ts

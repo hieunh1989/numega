@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiRequest } from "../lib/api";
 
@@ -129,9 +130,9 @@ export default function AdminPage() {
   return (
     <main className="admin-shell">
       <aside className="admin-sidebar">
-        <a className="admin-brand" href="/"><span>N</span><div><strong>Numega</strong><small>Admin Console</small></div></a>
+        <Link className="admin-brand" href="/"><span>N</span><div><strong>Numega</strong><small>Admin Console</small></div></Link>
         <nav>{navItems.map((item) => <button key={item.id} className={tab === item.id ? "active" : ""} onClick={() => { setTab(item.id); setSearch(""); }}><span>{item.icon}</span>{item.label}<b>{stats[item.stat]}</b></button>)}</nav>
-        <div className="admin-sidebar-footer"><a className="back-calculator" href="/">← Về Calculator</a><button onClick={logout}>Đăng xuất</button></div>
+        <div className="admin-sidebar-footer"><Link className="back-calculator" href="/">← Về Calculator</Link><button onClick={logout}>Đăng xuất</button></div>
       </aside>
 
       <section className="admin-main">
