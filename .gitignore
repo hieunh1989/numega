@@ -13,10 +13,14 @@
 # testing
 /coverage
 
-# next.js
+# next.js / vinext
 /.next/
 /.vinext/
 /out/
+
+# production
+/build
+/dist/
 
 # misc
 .DS_Store
@@ -28,17 +32,18 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# environment files; keep only the public example
 .env*
 !.env.example
 
-# vercel
+# vercel / cloudflare
 .vercel
+/.wrangler/
 
 # typescript
 next-env.d.ts
 *.tsbuildinfo
-/dist/
-/.wrangler/
+
+# generated local artifacts
 /outputs/
 /work/
