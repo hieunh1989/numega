@@ -65,5 +65,7 @@ test("ships an installable PWA and a dedicated phone install route", async () =>
   assert.match(installPage, /beforeinstallprompt/);
   assert.match(installPage, /installPrompt\.prompt\(\)/);
   assert.match(installPage, /Thêm vào Màn hình chính/);
+  assert.match(installPage, /CriOS/);
+  assert.match(installPage, /Chọn “Xem thêm”/);
   assert.match(serviceWorker, /\/install/);
 });

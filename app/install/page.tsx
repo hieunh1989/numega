@@ -9,7 +9,7 @@ type InstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<InstallChoice>;
 };
-type Platform = "loading" | "android" | "ios" | "in-app" | "desktop" | "installed";
+type Platform = "loading" | "android" | "ios-chrome" | "ios-safari" | "in-app" | "desktop" | "installed";
 
 function isStandalone() {
   const navigatorWithStandalone = navigator as Navigator & { standalone?: boolean };
@@ -32,10 +32,11 @@ export default function InstallPage() {
 
     const userAgent = navigator.userAgent;
     const ios = /iPad|iPhone|iPod/.test(userAgent);
+    const iosChrome = ios && /CriOS/i.test(userAgent);
     const inApp = /FBAN|FBAV|Instagram|Line|Zalo|Messenger/i.test(userAgent);
     const android = /Android/i.test(userAgent);
 
-    setPlatform(inApp ? "in-app" : ios ? "ios" : android ? "android" : "desktop");
+    setPlatform(inApp ? "in-app" : iosChrome ? "ios-chrome" : ios ? "ios-safari" : android ? "android" : "desktop");
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => undefined);
 
     const capturePrompt = (event: Event) => {
@@ -130,10 +131,26 @@ export default function InstallPage() {
           </>
         )}
 
-        {platform === "ios" && (
+        {platform === "ios-chrome" && (
           <>
             <div className="install-copy">
-              <span className="install-eyebrow">DÀNH CHO IPHONE / IPAD</span>
+              <span className="install-eyebrow">IPHONE / IPAD · CHROME</span>
+              <h1>Thêm Numega vào Màn hình chính</h1>
+              <p>Trên Chrome, anh mở bảng Chia sẻ rồi chọn thêm Numega vào Màn hình chính.</p>
+            </div>
+            <ol className="ios-install-steps">
+              <li><span>1</span><div><strong>Nhấn nút Chia sẻ</strong><small>Biểu tượng ô vuông có mũi tên hướng lên, nằm cạnh thanh địa chỉ ở phía trên.</small></div><b aria-hidden="true">⇧</b></li>
+              <li><span>2</span><div><strong>Chọn “Xem thêm”</strong><small>Nhấn biểu tượng mũi tên xuống ở cuối hàng tác vụ.</small></div><b aria-hidden="true">⌄</b></li>
+              <li><span>3</span><div><strong>Chọn “Thêm vào Màn hình chính”</strong><small>Mục này nằm trong danh sách tác vụ mở rộng.</small></div></li>
+              <li><span>4</span><div><strong>Xác nhận thêm ứng dụng</strong><small>Giữ tên Numega rồi nhấn “Thêm” để hoàn tất.</small></div></li>
+            </ol>
+          </>
+        )}
+
+        {platform === "ios-safari" && (
+          <>
+            <div className="install-copy">
+              <span className="install-eyebrow">IPHONE / IPAD · SAFARI</span>
               <h1>Thêm Numega vào Màn hình chính</h1>
               <p>Apple yêu cầu xác nhận qua Safari. Chỉ cần thực hiện ba bước sau một lần.</p>
             </div>
