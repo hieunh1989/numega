@@ -69,3 +69,18 @@ test("ships an installable PWA and a dedicated phone install route", async () =>
   assert.match(installPage, /Chọn “Xem thêm”/);
   assert.match(serviceWorker, /\/install/);
 });
+
+test("shows numeric zero as a placeholder instead of a locked input value", async () => {
+  const [calculator, admin] = await Promise.all([
+    read("app/page.tsx"),
+    read("app/admin/page.tsx"),
+  ]);
+  assert.match(calculator, /value=\{row\.inclusion === 0 \? "" : row\.inclusion\} placeholder="0"/);
+  assert.match(admin, /value=\{numericValue === 0 \? "" : numericValue\} placeholder="0"/);
+});
+
+test("keeps product copy neutral without conversational pronouns", async () => {
+  const installPage = await read("app/install/page.tsx");
+  assert.doesNotMatch(installPage, /\b(?:anh|bạn|mình)\b/i);
+  assert.match(installPage, /Ứng dụng đã được thêm vào thiết bị\. Có thể mở Numega/);
+});

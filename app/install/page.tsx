@@ -127,7 +127,7 @@ export default function InstallPage() {
                 <button type="button" onClick={() => window.location.reload()}>Kiểm tra lại</button>
               </div>
             )}
-            {dismissed && <p className="install-note warning">Anh đã đóng hộp thoại cài đặt. Tải lại trang để thử lại.</p>}
+            {dismissed && <p className="install-note warning">Hộp thoại cài đặt đã được đóng. Tải lại trang để thử lại.</p>}
           </>
         )}
 
@@ -136,7 +136,7 @@ export default function InstallPage() {
             <div className="install-copy">
               <span className="install-eyebrow">IPHONE / IPAD · CHROME</span>
               <h1>Thêm Numega vào Màn hình chính</h1>
-              <p>Trên Chrome, anh mở bảng Chia sẻ rồi chọn thêm Numega vào Màn hình chính.</p>
+              <p>Trên Chrome, mở bảng Chia sẻ rồi chọn thêm Numega vào Màn hình chính.</p>
             </div>
             <ol className="ios-install-steps">
               <li><span>1</span><div><strong>Nhấn nút Chia sẻ</strong><small>Biểu tượng ô vuông có mũi tên hướng lên, nằm cạnh thanh địa chỉ ở phía trên.</small></div><b aria-hidden="true">⇧</b></li>
@@ -190,7 +190,7 @@ export default function InstallPage() {
             <div className="install-copy success">
               <span className="install-success-mark" aria-hidden="true">✓</span>
               <h1>Numega đã sẵn sàng</h1>
-              <p>Ứng dụng đã được thêm vào thiết bị. Anh có thể mở Numega từ icon trên màn hình chính.</p>
+              <p>Ứng dụng đã được thêm vào thiết bị. Có thể mở Numega từ icon trên màn hình chính.</p>
             </div>
             <Link className="install-primary link" href="/">Mở Numega</Link>
           </>

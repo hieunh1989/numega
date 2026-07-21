@@ -278,7 +278,7 @@ export default function Home() {
                             <small>{row.ingredient["Scientific Name"]}</small>
                           </label>
                           <div className="ingredient-controls">
-                            <div className="number-field"><input id={`inc-${row.id}`} inputMode="decimal" type="number" min="0" max="100" step="0.1" value={row.inclusion} onChange={(event) => updateInclusion(row.id, event.target.value)} /><span>%</span></div>
+                            <div className="number-field"><input id={`inc-${row.id}`} inputMode="decimal" type="number" min="0" max="100" step="0.1" value={row.inclusion === 0 ? "" : row.inclusion} placeholder="0" onChange={(event) => updateInclusion(row.id, event.target.value)} /><span>%</span></div>
                             <button className="row-action info" aria-label={`Chi tiết ${row.ingredient["Ingredient Name"]}`} onClick={() => setDetailId(row.id)}>i</button>
                             <button className="row-action delete" aria-label={`Xóa ${row.ingredient["Ingredient Name"]}`} onClick={() => removeIngredient(row.id)}>×</button>
                           </div>
