@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Numega · Feed Formula Calculator",
-  description: "Ứng dụng PWA tính toán công thức thức ăn chăn nuôi, hoạt động online và offline.",
+  description: "A PWA for calculating animal feed formulas online and offline.",
   applicationName: "Numega",
   manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, statusBarStyle: "default", title: "Numega" },
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "Numega · Feed Formula Calculator",
-    description: "Tạo công thức, kiểm tra dinh dưỡng và xem đóng góp nguyên liệu ngay cả khi offline.",
+    description: "Build formulas, review nutrition, and analyze ingredient contributions even while offline.",
     type: "website",
   },
   twitter: { card: "summary" },
@@ -30,5 +30,5 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="vi"><body>{children}</body></html>;
+  return <html lang="en"><body>{children}</body></html>;
 }

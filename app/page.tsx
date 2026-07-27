@@ -68,8 +68,8 @@ function numberValue(ingredient: Ingredient, key: string) {
 }
 
 function formatValue(value: number, unit: string) {
-  if (unit === "kcal/kg" || unit === "mEq/kg") return Math.round(value).toLocaleString("vi-VN");
-  return value.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (unit === "kcal/kg" || unit === "mEq/kg") return Math.round(value).toLocaleString("en-US");
+  return value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function MiniIcon({ children }: { children: React.ReactNode }) {
@@ -198,7 +198,7 @@ export default function Home() {
 
   const shareResult = async () => {
     const text = `Numega: Protein ${formatValue(totals["Crude Protein (%)"], "%")}% · ABC4 ${formatValue(totals["ABC4 (mEq/kg)"], "mEq/kg")} mEq/kg`;
-    if (navigator.share) await navigator.share({ title: "Kết quả công thức Numega", text });
+    if (navigator.share) await navigator.share({ title: "Numega Formula Results", text });
     else await navigator.clipboard.writeText(text);
   };
 
@@ -238,24 +238,24 @@ export default function Home() {
             <Link className="brand-lockup" href="/" aria-label="Numega"><Image src="/numega-logo.png" alt="Numega" width={588} height={126} priority /></Link>
             {authUser && (
               <div className="header-actions">
-                {(!online || dataSource === "offline") && <span className="offline-pill">Dữ liệu offline</span>}
-                {installPrompt && <button className="install-button" onClick={triggerInstall}>Cài app</button>}
-                {authUser.role === "Admin" && <Link className="admin-link" href="/admin" aria-label="Mở quản trị">⚙</Link>}
-                <button className="avatar-button" onClick={logout} aria-label={`Đăng xuất ${authUser.full_name}`} title="Đăng xuất">{authUser.full_name.split(" ").slice(-2).map((word) => word[0]).join("").toUpperCase()}</button>
+                {(!online || dataSource === "offline") && <span className="offline-pill">Offline data</span>}
+                {installPrompt && <button className="install-button" onClick={triggerInstall}>Install app</button>}
+                {authUser.role === "Admin" && <Link className="admin-link" href="/admin" aria-label="Open administration">⚙</Link>}
+                <button className="avatar-button" onClick={logout} aria-label={`Sign out ${authUser.full_name}`} title="Sign out">{authUser.full_name.split(" ").slice(-2).map((word) => word[0]).join("").toUpperCase()}</button>
               </div>
             )}
           </header>
 
           <section className={`mix-status ${isValid ? "valid" : "warning"}`}>
             <div className="mix-status-row">
-              <div><span>Tổng tỷ lệ phối trộn</span><strong>{totalInclusion.toLocaleString("vi-VN")}%</strong></div>
-              <p>{isValid ? "✓ Sẵn sàng tính" : totalInclusion < 100 ? `${(100 - totalInclusion).toLocaleString("vi-VN")}% còn thiếu` : `${(totalInclusion - 100).toLocaleString("vi-VN")}% vượt mức`}</p>
+              <div><span>Total inclusion</span><strong>{totalInclusion.toLocaleString("en-US")}%</strong></div>
+              <p>{isValid ? "✓ Ready to calculate" : totalInclusion < 100 ? `${(100 - totalInclusion).toLocaleString("en-US")}% remaining` : `${(totalInclusion - 100).toLocaleString("en-US")}% over limit`}</p>
             </div>
             <div className="progress-track"><span style={{ width: `${Math.min(100, totalInclusion)}%` }} /></div>
-            {!isValid && <small>Tổng tỷ lệ phải bằng đúng 100% trước khi tính.</small>}
+            {!isValid && <small>Total inclusion must equal exactly 100% before calculation.</small>}
           </section>
 
-          <section className="builder-content" aria-label="Sáu nhóm nguyên liệu">
+          <section className="builder-content" aria-label="Six ingredient categories">
             {CATEGORY_ORDER.map((category, index) => {
               const categoryRows = rows.filter((row) => row.ingredient.Category === category);
               const categoryTotal = categoryRows.reduce((sum, row) => sum + row.inclusion, 0);
@@ -266,11 +266,11 @@ export default function Home() {
                     <span className="chevron">›</span>
                     <span className="category-icon"><Image src={icons[category]} alt="" aria-hidden="true" width={64} height={64} /></span>
                     <strong>{index + 1}. {CATEGORY_LABELS[category]}</strong>
-                    <span className="count-badge">{categoryRows.length} NL · {categoryTotal.toLocaleString("vi-VN")}%</span>
+                    <span className="count-badge">{categoryRows.length} items · {categoryTotal.toLocaleString("en-US")}%</span>
                   </button>
                   {isOpen && (
                     <div className="category-body">
-                      {categoryRows.length === 0 && <p className="empty-copy">Chưa có nguyên liệu trong nhóm này.</p>}
+                      {categoryRows.length === 0 && <p className="empty-copy">No ingredients in this category.</p>}
                       {categoryRows.map((row) => (
                         <div className="ingredient-row" key={row.id}>
                           <label htmlFor={`inc-${row.id}`}>
@@ -279,12 +279,12 @@ export default function Home() {
                           </label>
                           <div className="ingredient-controls">
                             <div className="number-field"><input id={`inc-${row.id}`} inputMode="decimal" type="number" min="0" max="100" step="0.1" value={row.inclusion === 0 ? "" : row.inclusion} placeholder="0" onChange={(event) => updateInclusion(row.id, event.target.value)} /><span>%</span></div>
-                            <button className="row-action info" aria-label={`Chi tiết ${row.ingredient["Ingredient Name"]}`} onClick={() => setDetailId(row.id)}>i</button>
-                            <button className="row-action delete" aria-label={`Xóa ${row.ingredient["Ingredient Name"]}`} onClick={() => removeIngredient(row.id)}>×</button>
+                            <button className="row-action info" aria-label={`View details for ${row.ingredient["Ingredient Name"]}`} onClick={() => setDetailId(row.id)}>i</button>
+                            <button className="row-action delete" aria-label={`Remove ${row.ingredient["Ingredient Name"]}`} onClick={() => removeIngredient(row.id)}>×</button>
                           </div>
                         </div>
                       ))}
-                      <button className="add-ingredient" onClick={() => openPicker(category)}><span>＋</span> Thêm nguyên liệu</button>
+                      <button className="add-ingredient" onClick={() => openPicker(category)}><span>＋</span> Add ingredient</button>
                     </div>
                   )}
                 </article>
@@ -294,26 +294,26 @@ export default function Home() {
 
           <footer className="action-dock">
             <button className="secondary-button" onClick={resetFormula}>Reset</button>
-            <button className="primary-button" disabled={!isValid} onClick={() => setShowResults(true)}><span>ϟ</span> Tính toán</button>
+            <button className="primary-button" disabled={!isValid} onClick={() => setShowResults(true)}><span>ϟ</span> Calculate</button>
           </footer>
         </>
       ) : (
         <section className="results-page">
           <header className="results-header">
-            <button className="icon-button" onClick={() => setShowResults(false)} aria-label="Quay lại">←</button>
-            <div><span>Kết quả công thức</span><small>Tự động cập nhật từ tỷ lệ phối trộn</small></div>
-            <button className="icon-button" onClick={shareResult} aria-label="Chia sẻ">↗</button>
+            <button className="icon-button" onClick={() => setShowResults(false)} aria-label="Go back">←</button>
+            <div><span>Formula Results</span><small>Automatically updated from inclusion rates</small></div>
+            <button className="icon-button" onClick={shareResult} aria-label="Share">↗</button>
           </header>
           <div className="results-content">
-            <div className="success-pill">✓ Tổng tỷ lệ: 100%</div>
-            <nav className="result-tabs" aria-label="Chế độ xem kết quả">
-              <button className={resultTab === "overview" ? "active" : ""} onClick={() => setResultTab("overview")}>Tổng quan</button>
-              <button className={resultTab === "groups" ? "active" : ""} onClick={() => setResultTab("groups")}>Chi tiết</button>
+            <div className="success-pill">✓ Total inclusion: 100%</div>
+            <nav className="result-tabs" aria-label="Result view">
+              <button className={resultTab === "overview" ? "active" : ""} onClick={() => setResultTab("overview")}>Overview</button>
+              <button className={resultTab === "groups" ? "active" : ""} onClick={() => setResultTab("groups")}>Details</button>
             </nav>
 
             {resultTab === "overview" && (
               <div className="result-stack">
-                <ResultSection title="Chỉ số tổng quát">
+                <ResultSection title="General Indicators">
                   <div className="metric-grid two">
                     <Metric label="ABC3" value={formatValue(totals["ABC3 (mEq/kg)"], "mEq/kg")} unit="mEq/kg" />
                     <Metric label="ABC4" value={formatValue(totals["ABC4 (mEq/kg)"], "mEq/kg")} unit="mEq/kg" />
@@ -327,14 +327,14 @@ export default function Home() {
                     })}
                   </div>
                 </ResultSection>
-                <ResultSection title="Khoáng chất">
+                <ResultSection title="Minerals">
                   <div className="metric-grid two soft">
                     <Metric label="Calcium" value={formatValue(totals["Calcium (%)"], "%")} unit="%" />
                     <Metric label="Phosphorus" value={formatValue(totals["Total Phosphorus (%)"], "%")} unit="%" />
                     <Metric label="Sodium" value={formatValue(totals["Sodium (%)"], "%")} unit="%" />
                   </div>
                 </ResultSection>
-                <ResultSection title="Giá trị năng lượng">
+                <ResultSection title="Energy Values">
                   <div className="energy-card">
                     <Metric label="ME Poultry" value={formatValue(totals["ME Poultry (kcal/kg)"], "kcal/kg")} unit="kcal/kg" />
                     <Metric label="ME Swine" value={formatValue(totals["ME Swine (kcal/kg)"], "kcal/kg")} unit="kcal/kg" />
@@ -345,17 +345,17 @@ export default function Home() {
 
             {resultTab === "groups" && (
               <div className="detail-results">
-                <ResultSection title="Đóng góp ABC4 theo nhóm">
+                <ResultSection title="ABC4 Contribution by Category">
                   {negativeAbc4Rows.length > 0 && (
                     <div className="chart-note warning">
-                      <strong>Giá trị âm không phải lỗi.</strong>
+                      <strong>Negative values are not errors.</strong>
                       <span>
-                        {negativeAbc4Rows.map((row) => `${row.ingredient["Ingredient Name"]} ${(numberValue(row.ingredient, "ABC4 (mEq/kg)") * row.inclusion / 100).toFixed(1)} mEq/kg`).join(" · ")} đang làm giảm ABC4 tổng.
+                        {negativeAbc4Rows.map((row) => `${row.ingredient["Ingredient Name"]} ${(numberValue(row.ingredient, "ABC4 (mEq/kg)") * row.inclusion / 100).toFixed(1)} mEq/kg`).join(" · ")} reduce the total ABC4 value.
                       </span>
                     </div>
                   )}
                   <div className="category-summary-table">
-                    <div className="summary-head"><span>Nhóm nguyên liệu</span><span>ABC4</span><span>% đóng góp</span></div>
+                    <div className="summary-head"><span>Ingredient Category</span><span>ABC4</span><span>% Contribution</span></div>
                     {categoryResults.map((item) => {
                       const percent = Math.abs(totalAbc4) > 0.0000001 ? item.abc4 / totalAbc4 * 100 : null;
                       return <div className="summary-row" key={item.category}><strong>{CATEGORY_LABELS[item.category]}</strong><span className={item.abc4 < 0 ? "negative-value" : ""}>{item.abc4.toFixed(1)}</span><span className={percent !== null && percent < 0 ? "negative-value" : ""}>{percent === null ? "—" : `${percent.toFixed(1)}%`}</span></div>;
@@ -364,7 +364,7 @@ export default function Home() {
                 </ResultSection>
 
                 <ResultSection title="ABC4 Contribution by Category">
-                  <div className="category-column-chart" role="img" aria-label="Biểu đồ cột đóng góp ABC4 theo nhóm">
+                  <div className="category-column-chart" role="img" aria-label="ABC4 contribution bar chart by category">
                     <div className="column-grid" />
                     <div className="column-series">
                       {categoryResults.map((item, index) => {
@@ -378,14 +378,14 @@ export default function Home() {
 
                 <ResultSection title="Top 10 ABC4 Contributors">
                   <div className="top-table">
-                    <div className="top-table-head"><span>Hạng</span><span>Nguyên liệu</span><span>Inclusion</span><span>ABC4</span></div>
+                    <div className="top-table-head"><span>Rank</span><span>Ingredient</span><span>Inclusion</span><span>ABC4</span></div>
                     {topContributors.map((item, index) => <div className="top-table-row" key={item.id}><span>{index + 1}</span><strong>{item.ingredient["Ingredient Name"]}</strong><span>{item.inclusion.toFixed(1)}%</span><span className={item.abc4 < 0 ? "negative-value" : ""}>{item.abc4.toFixed(1)}</span></div>)}
                     {Array.from({ length: Math.max(0, 10 - topContributors.length) }, (_, index) => <div className="top-table-row empty" key={`empty-${index}`}><span>{topContributors.length + index + 1}</span><strong>—</strong><span>—</span><span>—</span></div>)}
                   </div>
                 </ResultSection>
 
                 <ResultSection title="Top 10 ABC4 Contributors · Chart">
-                  <div className="top-horizontal-chart" role="img" aria-label="Biểu đồ ngang Top 10 nguyên liệu đóng góp ABC4">
+                  <div className="top-horizontal-chart" role="img" aria-label="Horizontal chart of the top 10 ABC4-contributing ingredients">
                     {[...topContributors].reverse().map((item) => {
                       const width = Math.abs(item.abc4) / topRange * 100;
                       return <div className="top-bar-row" key={item.id}><span>{item.ingredient["Ingredient Name"]}</span><div className="top-bar-track"><i className={item.abc4 < 0 ? "negative" : "positive"} style={item.abc4 < 0 ? { left: `${topZero}%`, width: `${width}%` } : { right: `${100 - topZero}%`, width: `${width}%` }} /><b style={{ left: `${topZero}%` }} /></div><strong className={item.abc4 < 0 ? "negative-value" : ""}>{item.abc4.toFixed(1)}</strong></div>;
@@ -395,7 +395,7 @@ export default function Home() {
               </div>
             )}
 
-            <button className="save-button" onClick={saveResult}>▣ Lưu kết quả</button>
+            <button className="save-button" onClick={saveResult}>▣ Save Results</button>
           </div>
         </section>
       )}
@@ -404,17 +404,17 @@ export default function Home() {
         <div className="sheet-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setPickerCategory(null); }}>
           <section className="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="picker-title">
             <div className="sheet-handle" />
-            <header><h2 id="picker-title">Chọn nguyên liệu — {CATEGORY_LABELS[pickerCategory]}</h2><button onClick={() => setPickerCategory(null)} aria-label="Đóng">×</button></header>
-            <label className="search-field"><span>⌕</span><input autoFocus value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm kiếm nguyên liệu..." /></label>
+            <header><h2 id="picker-title">Select Ingredients — {CATEGORY_LABELS[pickerCategory]}</h2><button onClick={() => setPickerCategory(null)} aria-label="Close">×</button></header>
+            <label className="search-field"><span>⌕</span><input autoFocus value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search ingredients..." /></label>
             <div className="picker-list">
               {ingredients.filter((ingredient) => ingredient.Category === pickerCategory && ingredient["Ingredient Name"].toLowerCase().includes(search.toLowerCase())).map((ingredient) => {
                 const id = ingredient["Ingredient ID"];
                 const selected = pickerSelection.includes(id);
                 const alreadyUsed = formula.some((item) => item.id === id);
-                return <button disabled={alreadyUsed} className={selected ? "selected" : ""} key={id} onClick={() => setPickerSelection((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id])}><span className="radio">{selected ? "●" : ""}</span><span><strong>{ingredient["Ingredient Name"]}</strong><em>{ingredient["Scientific Name"]}</em></span>{alreadyUsed && <small>Đã thêm</small>}</button>;
+                return <button disabled={alreadyUsed} className={selected ? "selected" : ""} key={id} onClick={() => setPickerSelection((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id])}><span className="radio">{selected ? "●" : ""}</span><span><strong>{ingredient["Ingredient Name"]}</strong><em>{ingredient["Scientific Name"]}</em></span>{alreadyUsed && <small>Added</small>}</button>;
               })}
             </div>
-            <button className="sheet-primary" disabled={pickerSelection.length === 0} onClick={addSelected}>Thêm vào công thức ({pickerSelection.length})</button>
+            <button className="sheet-primary" disabled={pickerSelection.length === 0} onClick={addSelected}>Add to Formula ({pickerSelection.length})</button>
           </section>
         </div>
       )}
@@ -423,22 +423,22 @@ export default function Home() {
         <div className="sheet-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setDetailId(null); }}>
           <section className="bottom-sheet detail-sheet" role="dialog" aria-modal="true" aria-labelledby="detail-title">
             <div className="sheet-handle" />
-            <header><div><h2 id="detail-title">{detail.ingredient["Ingredient Name"]}</h2><p><i>{detail.ingredient["Scientific Name"]}</i> · {CATEGORY_LABELS[detail.ingredient.Category]} · {detail.ingredient.Origin}</p></div><button onClick={() => setDetailId(null)} aria-label="Đóng">×</button></header>
-            <h3><MiniIcon>▥</MiniIcon> Đóng góp theo tỷ lệ hiện tại ({detail.inclusion}%)</h3>
+            <header><div><h2 id="detail-title">{detail.ingredient["Ingredient Name"]}</h2><p><i>{detail.ingredient["Scientific Name"]}</i> · {CATEGORY_LABELS[detail.ingredient.Category]} · {detail.ingredient.Origin}</p></div><button onClick={() => setDetailId(null)} aria-label="Close">×</button></header>
+            <h3><MiniIcon>▥</MiniIcon> Contribution at Current Inclusion ({detail.inclusion}%)</h3>
             <div className="detail-metrics">
               {[NUTRIENTS[1], NUTRIENTS[2], NUTRIENTS[3], NUTRIENTS[9]].map(([key, label, unit]) => <Metric key={key} label={label} value={formatValue(numberValue(detail.ingredient, key) * detail.inclusion / 100, unit)} unit={unit} />)}
             </div>
-            <h3 className="reference-title"><MiniIcon>▤</MiniIcon> Thông số tham khảo (database gốc)</h3>
+            <h3 className="reference-title"><MiniIcon>▤</MiniIcon> Reference Values (Source Database)</h3>
             <div className="reference-grid">
               {["Dry Matter (%)", "Moisture (%)", "Lysine (%)", "Methionine (%)", "Threonine (%)", "Valine (%)"].map((key) => <div key={key}><span>{key.replace(" (%)", "")}</span><strong>{numberValue(detail.ingredient, key).toFixed(2)}%</strong></div>)}
             </div>
-            <div className="detail-actions"><button onClick={() => setDetailId(null)}>Đóng</button><button onClick={() => setDetailId(null)}>Sử dụng nguyên liệu</button></div>
+            <div className="detail-actions"><button onClick={() => setDetailId(null)}>Close</button><button onClick={() => setDetailId(null)}>Use Ingredient</button></div>
           </section>
         </div>
       )}
 
       {saved && (
-        <div className="toast" role="status"><span>✓</span><div><strong>Đã lưu kết quả</strong><small>Dữ liệu được lưu trên thiết bị và dùng được khi offline.</small></div><button onClick={() => setSaved(false)}>×</button></div>
+        <div className="toast" role="status"><span>✓</span><div><strong>Results Saved</strong><small>Data is stored on this device and remains available offline.</small></div><button onClick={() => setSaved(false)}>×</button></div>
       )}
     </main>
   );

@@ -38,7 +38,7 @@ export default function LoginPage() {
       const requested = safeReturnPath();
       window.location.replace(requested === "/admin" && user.role !== "Admin" ? "/" : requested);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Không thể đăng nhập. Vui lòng thử lại.");
+      setError(caught instanceof Error ? caught.message : "Unable to sign in. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -47,13 +47,13 @@ export default function LoginPage() {
   return (
     <main className="login-shell">
       <section className="login-card">
-        <Link className="login-logo" href="/" aria-label="Về Numega">
+        <Link className="login-logo" href="/" aria-label="Back to Numega">
           <Image src="/numega-logo.png" alt="Numega" width={588} height={126} priority />
         </Link>
         <div className="login-heading">
           <span>NUMEGA FEED FORMULA</span>
-          <h1>Đăng nhập</h1>
-          <p>Sử dụng tài khoản được cấp để tiếp tục.</p>
+          <h1>Sign In</h1>
+          <p>Use an authorized account to continue.</p>
         </div>
         <form onSubmit={submit} className="login-form">
           <label>
@@ -61,16 +61,16 @@ export default function LoginPage() {
             <input type="email" inputMode="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@numega.com" required autoFocus />
           </label>
           <label>
-            <span>Mật khẩu</span>
+            <span>Password</span>
             <div className="password-field">
-              <input type={showPassword ? "text" : "password"} autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Nhập mật khẩu" required />
-              <button type="button" onClick={() => setShowPassword((current) => !current)} aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}>{showPassword ? "Ẩn" : "Hiện"}</button>
+              <input type={showPassword ? "text" : "password"} autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Enter password" required />
+              <button type="button" onClick={() => setShowPassword((current) => !current)} aria-label={showPassword ? "Hide password" : "Show password"}>{showPassword ? "Hide" : "Show"}</button>
             </div>
           </label>
           {error && <div className="login-error" role="alert">{error}</div>}
-          <button className="login-submit" type="submit" disabled={submitting}>{submitting ? "Đang đăng nhập…" : "Đăng nhập"}</button>
+          <button className="login-submit" type="submit" disabled={submitting}>{submitting ? "Signing in…" : "Sign In"}</button>
         </form>
-        <Link className="login-back" href="/">← Quay lại trang tính</Link>
+        <Link className="login-back" href="/">← Back to Calculator</Link>
       </section>
     </main>
   );

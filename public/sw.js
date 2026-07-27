@@ -1,4 +1,4 @@
-const CACHE = "numega-v6";
+const CACHE = "numega-v7";
 const APP_SHELL = [
   "/",
   "/install",

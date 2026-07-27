@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     const user = result.rows[0];
 
     if (!user || user.status !== "Active" || !(await verifyPassword(password, user.password_hash))) {
-      return NextResponse.json({ message: "Email hoặc mật khẩu không đúng." }, { status: 401 });
+      return NextResponse.json({ message: "Incorrect email or password." }, { status: 401 });
     }
 
     const token = createSessionToken();

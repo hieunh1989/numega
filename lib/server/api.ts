@@ -44,8 +44,8 @@ export async function authenticatedUser(request: NextRequest): Promise<PublicUse
 
 export async function requireAdmin(request: NextRequest) {
   const user = await authenticatedUser(request);
-  if (!user) return NextResponse.json({ message: "Vui lòng đăng nhập để tiếp tục." }, { status: 401 });
-  if (user.role !== "Admin") return NextResponse.json({ message: "Tài khoản không có quyền quản trị." }, { status: 403 });
+  if (!user) return NextResponse.json({ message: "Please sign in to continue." }, { status: 401 });
+  if (user.role !== "Admin") return NextResponse.json({ message: "This account does not have administrator access." }, { status: 403 });
   return null;
 }
 
@@ -56,9 +56,9 @@ export async function handleApi(action: () => Promise<Response>) {
   } catch (error) {
     console.error(error);
     const code = typeof error === "object" && error && "code" in error ? String(error.code) : "";
-    if (code === "23505") return NextResponse.json({ message: "Dữ liệu đã tồn tại hoặc bị trùng." }, { status: 409 });
-    if (code === "23503") return NextResponse.json({ message: "Danh mục được chọn không tồn tại." }, { status: 400 });
-    return NextResponse.json({ message: "Máy chủ gặp lỗi. Vui lòng thử lại." }, { status: 500 });
+    if (code === "23505") return NextResponse.json({ message: "This record already exists or contains duplicate data." }, { status: 409 });
+    if (code === "23503") return NextResponse.json({ message: "The selected category does not exist." }, { status: 400 });
+    return NextResponse.json({ message: "The server encountered an error. Please try again." }, { status: 500 });
   }
 }
 

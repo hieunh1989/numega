@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     if (denied) return denied;
     const body = await request.json() as Record<string, unknown>;
     const name = text(body.name);
-    if (!name) return NextResponse.json({ message: "Tên danh mục là bắt buộc." }, { status: 400 });
+    if (!name) return NextResponse.json({ message: "Category name is required." }, { status: 400 });
     const generatedSlug = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
     const slug = text(body.slug, generatedSlug);
     const result = await pool.query(

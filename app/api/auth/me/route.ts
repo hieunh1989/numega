@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   return handleApi(async () => {
     const user = await authenticatedUser(request);
-    if (!user) return NextResponse.json({ message: "Chưa đăng nhập." }, { status: 401 });
+    if (!user) return NextResponse.json({ message: "Not signed in." }, { status: 401 });
     return NextResponse.json(user);
   });
 }

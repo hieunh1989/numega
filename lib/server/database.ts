@@ -28,12 +28,12 @@ export const ingredientDatabaseColumns = [
 ] as const;
 
 const categorySeeds = [
-  ["cereals", "Cereals", "Ngũ cốc và nguồn tinh bột", 1],
-  ["protein-sources", "Protein Sources", "Nguồn cung cấp protein", 2],
-  ["energy-oils-fats", "Energy (Oils & Fats)", "Dầu, mỡ và nguồn năng lượng", 3],
-  ["minerals", "Minerals", "Khoáng đa lượng và vi lượng", 4],
-  ["amino-acids", "Amino Acids", "Axit amin bổ sung", 5],
-  ["others", "Others", "Premix, enzyme và nguyên liệu khác", 6],
+  ["cereals", "Cereals", "Grains and starch sources", 1],
+  ["protein-sources", "Protein Sources", "Protein sources", 2],
+  ["energy-oils-fats", "Energy (Oils & Fats)", "Oils, fats, and energy sources", 3],
+  ["minerals", "Minerals", "Macro and trace minerals", 4],
+  ["amino-acids", "Amino Acids", "Supplemental amino acids", 5],
+  ["others", "Others", "Premixes, enzymes, and other ingredients", 6],
 ] as const;
 
 async function initializeDatabase() {

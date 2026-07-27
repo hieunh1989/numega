@@ -64,9 +64,9 @@ test("ships an installable PWA and a dedicated phone install route", async () =>
   assert.ok(manifest.icons.some((icon) => icon.purpose === "maskable"));
   assert.match(installPage, /beforeinstallprompt/);
   assert.match(installPage, /installPrompt\.prompt\(\)/);
-  assert.match(installPage, /Thêm vào Màn hình chính/);
+  assert.match(installPage, /Add to Home Screen/);
   assert.match(installPage, /CriOS/);
-  assert.match(installPage, /Chọn “Xem thêm”/);
+  assert.match(installPage, /Select “More”/);
   assert.match(serviceWorker, /\/install/);
 });
 
@@ -79,8 +79,31 @@ test("shows numeric zero as a placeholder instead of a locked input value", asyn
   assert.match(admin, /value=\{numericValue === 0 \? "" : numericValue\} placeholder="0"/);
 });
 
-test("keeps product copy neutral without conversational pronouns", async () => {
+test("keeps product copy in production-ready English", async () => {
   const installPage = await read("app/install/page.tsx");
   assert.doesNotMatch(installPage, /\b(?:anh|bạn|mình)\b/i);
-  assert.match(installPage, /Ứng dụng đã được thêm vào thiết bị\. Có thể mở Numega/);
+  assert.match(installPage, /The app has been added to this device\. Open Numega/);
+});
+
+test("uses English across product UI, metadata, and API messages", async () => {
+  const productFiles = await Promise.all([
+    "app/page.tsx",
+    "app/admin/page.tsx",
+    "app/login/page.tsx",
+    "app/install/page.tsx",
+    "app/install/layout.tsx",
+    "app/layout.tsx",
+    "app/lib/api.ts",
+    "lib/server/api.ts",
+  ].map(read));
+  const productCopy = productFiles.join("\n");
+  assert.doesNotMatch(productCopy, /[ăâđêôơưĂÂĐÊÔƠƯáàảãạéèẻẽẹíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừửữựýỳỷỹỵÁÀẢÃẠÉÈẺẼẸÍÌỈĨỊÓÒỎÕỌỐỒỔỖỘỚỜỞỠỢÚÙỦŨỤỨỪỬỮỰÝỲỶỸỴ]/);
+  assert.doesNotMatch(productCopy, /vi-VN|lang="vi"/);
+  assert.match(productCopy, /Formula Results/);
+  assert.match(productCopy, /Ingredient Management/);
+  assert.match(productCopy, /Sign In/);
+
+  const manifest = JSON.parse(await read("public/manifest.webmanifest"));
+  assert.equal(manifest.lang, "en");
+  assert.match(manifest.description, /Calculate animal feed formulas/);
 });

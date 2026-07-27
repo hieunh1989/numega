@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json() as Record<string, unknown>;
     const id = text(body["Ingredient ID"]).toUpperCase();
     if (!id || !text(body["Ingredient Name"]) || !text(body["Category ID"])) {
-      return NextResponse.json({ message: "Mã, tên và danh mục nguyên liệu là bắt buộc." }, { status: 400 });
+      return NextResponse.json({ message: "Ingredient ID, name, and category are required." }, { status: 400 });
     }
     const values = ingredientValues(body, id);
     await pool.query(

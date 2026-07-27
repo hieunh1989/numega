@@ -6,8 +6,8 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
     cache: "no-store",
   });
   if (!response.ok) {
-    const payload = await response.json().catch(() => ({ message: "Không thể kết nối máy chủ." }));
-    throw new Error(payload.message || "Không thể kết nối máy chủ.");
+    const payload = await response.json().catch(() => ({ message: "Unable to connect to the server." }));
+    throw new Error(payload.message || "Unable to connect to the server.");
   }
   if (response.status === 204) return undefined as T;
   return response.json();
