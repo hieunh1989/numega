@@ -70,13 +70,16 @@ test("ships an installable PWA and a dedicated phone install route", async () =>
   assert.match(serviceWorker, /\/install/);
 });
 
-test("shows numeric zero as a placeholder instead of a locked input value", async () => {
+test("keeps empty numeric drafts editable without forcing zero back into the input", async () => {
   const [calculator, admin] = await Promise.all([
     read("app/page.tsx"),
     read("app/admin/page.tsx"),
   ]);
-  assert.match(calculator, /value=\{row\.inclusion === 0 \? "" : row\.inclusion\} placeholder="0"/);
-  assert.match(admin, /value=\{numericValue === 0 \? "" : numericValue\} placeholder="0"/);
+  assert.match(calculator, /inclusionDrafts\[row\.id\] \?\? \(row\.inclusion === 0 \? "" : String\(row\.inclusion\)\)/);
+  assert.match(calculator, /setInclusionDrafts\(\(current\) => \(\{ \.\.\.current, \[id\]: value \}\)\)/);
+  assert.match(calculator, /onBlur=\{\(\) => finishInclusionEdit\(row\.id\)\}/);
+  assert.match(admin, /\[field\]: event\.target\.value/);
+  assert.match(admin, /fieldValue === 0 \|\| fieldValue == null \? "" : String\(fieldValue\)/);
 });
 
 test("keeps product copy in production-ready English", async () => {

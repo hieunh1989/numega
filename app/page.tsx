@@ -81,6 +81,7 @@ export default function Home() {
   const [ingredients, setIngredients] = useState<Ingredient[]>(rawIngredients);
   const [dataSource, setDataSource] = useState<"database" | "offline">("offline");
   const [formula, setFormula] = useState<FormulaItem[]>(INITIAL_FORMULA);
+  const [inclusionDrafts, setInclusionDrafts] = useState<Record<string, string>>({});
   const [expanded, setExpanded] = useState<string>("Cereals");
   const [pickerCategory, setPickerCategory] = useState<string | null>(null);
   const [pickerSelection, setPickerSelection] = useState<string[]>([]);
@@ -157,8 +158,18 @@ export default function Home() {
   }), [rows]);
 
   const updateInclusion = (id: string, value: string) => {
+    setInclusionDrafts((current) => ({ ...current, [id]: value }));
     const parsed = Math.max(0, Math.min(100, Number(value) || 0));
     setFormula((current) => current.map((item) => item.id === id ? { ...item, inclusion: parsed } : item));
+  };
+
+  const finishInclusionEdit = (id: string) => {
+    setInclusionDrafts((current) => {
+      if (!(id in current)) return current;
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
   };
 
   const toggleCategory = (category: string, event: MouseEvent<HTMLButtonElement>) => {
@@ -168,7 +179,10 @@ export default function Home() {
     if (opening) window.requestAnimationFrame(() => card?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
 
-  const removeIngredient = (id: string) => setFormula((current) => current.filter((item) => item.id !== id));
+  const removeIngredient = (id: string) => {
+    setFormula((current) => current.filter((item) => item.id !== id));
+    finishInclusionEdit(id);
+  };
 
   const openPicker = (category: string) => {
     setPickerCategory(category);
@@ -186,6 +200,7 @@ export default function Home() {
 
   const resetFormula = () => {
     setFormula(INITIAL_FORMULA);
+    setInclusionDrafts({});
     setShowResults(false);
   };
 
@@ -278,7 +293,7 @@ export default function Home() {
                             <small>{row.ingredient["Scientific Name"]}</small>
                           </label>
                           <div className="ingredient-controls">
-                            <div className="number-field"><input id={`inc-${row.id}`} inputMode="decimal" type="number" min="0" max="100" step="0.1" value={row.inclusion === 0 ? "" : row.inclusion} placeholder="0" onChange={(event) => updateInclusion(row.id, event.target.value)} /><span>%</span></div>
+                            <div className="number-field"><input id={`inc-${row.id}`} inputMode="decimal" type="number" min="0" max="100" step="0.1" value={inclusionDrafts[row.id] ?? (row.inclusion === 0 ? "" : String(row.inclusion))} placeholder="0" onChange={(event) => updateInclusion(row.id, event.target.value)} onBlur={() => finishInclusionEdit(row.id)} /><span>%</span></div>
                             <button className="row-action info" aria-label={`View details for ${row.ingredient["Ingredient Name"]}`} onClick={() => setDetailId(row.id)}>i</button>
                             <button className="row-action delete" aria-label={`Remove ${row.ingredient["Ingredient Name"]}`} onClick={() => removeIngredient(row.id)}>×</button>
                           </div>
