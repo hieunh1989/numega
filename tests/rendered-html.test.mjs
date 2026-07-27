@@ -15,6 +15,18 @@ test("uses standard Next.js scripts without Vinext or Cloudflare", async () => {
   assert.equal(packageJson.devDependencies?.["@cloudflare/vite-plugin"], undefined);
 });
 
+test("serves PWA images directly and keeps offline image fallbacks", async () => {
+  const [nextConfig, serviceWorker] = await Promise.all([
+    read("next.config.ts"),
+    read("public/sw.js"),
+  ]);
+  assert.match(nextConfig, /images:\s*\{\s*unoptimized:\s*true\s*\}/);
+  assert.match(serviceWorker, /const CACHE = "numega-v9"/);
+  assert.match(serviceWorker, /url\.pathname === "\/_next\/image"/);
+  assert.match(serviceWorker, /caches\.match\(originalPath\)/);
+  assert.match(serviceWorker, /event\.request\.mode === "navigate"/);
+});
+
 test("keeps browser API calls on the same Next.js origin", async () => {
   const client = await read("app/lib/api.ts");
   assert.match(client, /fetch\(path,/);

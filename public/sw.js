@@ -1,4 +1,4 @@
-const CACHE = "numega-v8";
+const CACHE = "numega-v9";
 const APP_SHELL = [
   "/",
   "/install",
@@ -7,6 +7,8 @@ const APP_SHELL = [
   "/apple-touch-icon.png",
   "/icons/pwa/icon-192.png",
   "/icons/pwa/icon-512.png",
+  "/icons/pwa/icon-maskable-192.png",
+  "/icons/pwa/icon-maskable-512.png",
   "/numega-logo.png",
   "/icons/categories/cereals.png",
   "/icons/categories/protein-sources.png",
@@ -37,6 +39,20 @@ self.addEventListener("fetch", (event) => {
         }
         return response;
       })
-      .catch(() => caches.match(event.request).then((cached) => cached || caches.match("/"))),
+      .catch(async () => {
+        const cached = await caches.match(event.request);
+        if (cached) return cached;
+
+        if (url.pathname === "/_next/image") {
+          const originalPath = url.searchParams.get("url");
+          if (originalPath?.startsWith("/")) {
+            const originalImage = await caches.match(originalPath);
+            if (originalImage) return originalImage;
+          }
+        }
+
+        if (event.request.mode === "navigate") return caches.match("/");
+        return Response.error();
+      }),
   );
 });
