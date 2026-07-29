@@ -13,6 +13,13 @@ function safeReturnPath() {
   return value.startsWith("/") && !value.startsWith("//") ? value : "/";
 }
 
+function destinationFor(user: AuthUser) {
+  const requested = safeReturnPath();
+  if (user.role === "Admin" && requested === "/") return "/admin";
+  if (user.role !== "Admin" && requested === "/admin") return "/";
+  return requested;
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,7 +29,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     apiRequest<AuthUser>("/api/auth/me")
-      .then(() => { window.location.replace(safeReturnPath()); })
+      .then((user) => { window.location.replace(destinationFor(user)); })
       .catch(() => undefined);
   }, []);
 
@@ -35,8 +42,7 @@ export default function LoginPage() {
         method: "POST",
         body: JSON.stringify({ email, password }),
       });
-      const requested = safeReturnPath();
-      window.location.replace(requested === "/admin" && user.role !== "Admin" ? "/" : requested);
+      window.location.replace(destinationFor(user));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to sign in. Please try again.");
     } finally {

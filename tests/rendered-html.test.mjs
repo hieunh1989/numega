@@ -48,6 +48,14 @@ test("keeps login and admin authorization in server-side route handlers", async 
   assert.match(database, /CREATE TABLE IF NOT EXISTS sessions/);
 });
 
+test("sends administrators to the admin interface after sign in", async () => {
+  const loginPage = await read("app/login/page.tsx");
+  assert.match(loginPage, /user\.role === "Admin" && requested === "\/"/);
+  assert.match(loginPage, /return "\/admin"/);
+  assert.match(loginPage, /\.then\(\(user\) => \{ window\.location\.replace\(destinationFor\(user\)\); \}\)/);
+  assert.match(loginPage, /window\.location\.replace\(destinationFor\(user\)\)/);
+});
+
 test("ships all PostgreSQL-backed Next.js API routes", async () => {
   const routes = [
     "app/api/health/route.ts",
