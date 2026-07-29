@@ -10,28 +10,23 @@ type Ingredient = (typeof rawIngredients)[number];
 type FormulaItem = { id: string; inclusion: number };
 type ResultTab = "overview" | "groups";
 type AuthUser = { id: string; full_name: string; email: string; role: "Admin" | "User"; status: string };
+type Category = { id: string; slug: string; name: string; sort_order: number; show_in_calculator: boolean; icon: string };
+type CategoryResult = { category: string; inclusion: number; abc3: number; abc4: number };
+type ChartMetric = "ABC3" | "ABC4";
+type ChartCategoryItem = { category: string; value: number; color: string };
 
-const CATEGORY_ORDER = [
-  "Cereals",
-  "Protein Sources",
-  "Energy (Oils & Fats)",
-  "Minerals",
-  "Amino Acids",
-  "Others",
-] as const;
-
-const CATEGORY_LABELS: Record<string, string> = {
-  Cereals: "Cereals",
-  "Protein Sources": "Protein Sources",
-  "Energy (Oils & Fats)": "Oils & Fats",
-  Minerals: "Minerals",
-  "Amino Acids": "Amino Acids",
-  Others: "Others",
-};
+const DEFAULT_CATEGORIES: Category[] = [
+  { id: "cereals", slug: "cereals", name: "Cereals", sort_order: 1, show_in_calculator: true, icon: "/icons/categories/cereals.png" },
+  { id: "protein-sources", slug: "protein-sources", name: "Protein Sources", sort_order: 2, show_in_calculator: true, icon: "/icons/categories/protein-sources.png" },
+  { id: "energy-oils-fats", slug: "energy-oils-fats", name: "Energy (Oils & Fats)", sort_order: 3, show_in_calculator: true, icon: "/icons/categories/oils-fats.png" },
+  { id: "minerals", slug: "minerals", name: "Minerals", sort_order: 4, show_in_calculator: true, icon: "/icons/categories/minerals.png" },
+  { id: "amino-acids", slug: "amino-acids", name: "Amino Acids", sort_order: 5, show_in_calculator: true, icon: "/icons/categories/amino-acids.png" },
+  { id: "others", slug: "others", name: "Others", sort_order: 6, show_in_calculator: true, icon: "/icons/categories/others.png" },
+];
 
 const NUTRIENTS = [
-  ["ABC3 (mEq/kg)", "ABC3", "mEq/kg"],
-  ["ABC4 (mEq/kg)", "ABC4", "mEq/kg"],
+  ["ABC3 (mEq/kg)", "ABC3", "meq/kg"],
+  ["ABC4 (mEq/kg)", "ABC4", "meq/kg"],
   ["Crude Protein (%)", "Protein", "%"],
   ["Crude Fat (%)", "Fat", "%"],
   ["Crude Fiber (%)", "Fiber", "%"],
@@ -53,22 +48,13 @@ const INITIAL_FORMULA: FormulaItem[] = [
   { id: "ING-026", inclusion: 2 },
 ];
 
-const icons: Record<string, string> = {
-  Cereals: "/icons/categories/cereals.png",
-  "Protein Sources": "/icons/categories/protein-sources.png",
-  "Energy (Oils & Fats)": "/icons/categories/oils-fats.png",
-  Minerals: "/icons/categories/minerals.png",
-  "Amino Acids": "/icons/categories/amino-acids.png",
-  Others: "/icons/categories/others.png",
-};
-
 function numberValue(ingredient: Ingredient, key: string) {
   const value = ingredient[key as keyof Ingredient];
   return typeof value === "number" ? value : Number(value) || 0;
 }
 
 function formatValue(value: number, unit: string) {
-  if (unit === "kcal/kg" || unit === "mEq/kg") return Math.round(value).toLocaleString("en-US");
+  if (unit === "kcal/kg" || unit === "meq/kg") return Math.round(value).toLocaleString("en-US");
   return value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
@@ -79,6 +65,7 @@ function MiniIcon({ children }: { children: React.ReactNode }) {
 export default function Home() {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [ingredients, setIngredients] = useState<Ingredient[]>(rawIngredients);
+  const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
   const [dataSource, setDataSource] = useState<"database" | "offline">("offline");
   const [formula, setFormula] = useState<FormulaItem[]>(INITIAL_FORMULA);
   const [inclusionDrafts, setInclusionDrafts] = useState<Record<string, string>>({});
@@ -103,6 +90,10 @@ export default function Home() {
     if (cachedIngredients) {
       try { setIngredients(JSON.parse(cachedIngredients)); } catch { /* use embedded database */ }
     }
+    const cachedCategories = localStorage.getItem("numega-calculator-categories");
+    if (cachedCategories) {
+      try { setCategories(JSON.parse(cachedCategories)); } catch { /* use embedded categories */ }
+    }
     apiRequest<Ingredient[]>("/api/ingredients?active=true")
       .then((databaseIngredients) => {
         setIngredients(databaseIngredients);
@@ -110,6 +101,12 @@ export default function Home() {
         localStorage.setItem("numega-ingredients", JSON.stringify(databaseIngredients));
       })
       .catch(() => setDataSource("offline"));
+    apiRequest<Category[]>("/api/categories?calculator=true")
+      .then((databaseCategories) => {
+        setCategories(databaseCategories);
+        localStorage.setItem("numega-calculator-categories", JSON.stringify(databaseCategories));
+      })
+      .catch(() => undefined);
     apiRequest<AuthUser>("/api/auth/me").then(setAuthUser).catch(() => setAuthUser(null));
     const syncStatus = () => setOnline(navigator.onLine);
     const captureInstall = (event: Event) => {
@@ -131,31 +128,41 @@ export default function Home() {
     localStorage.setItem("agricalc-formula", JSON.stringify(formula));
   }, [formula]);
 
+  useEffect(() => {
+    setExpanded((current) => categories.some((category) => category.name === current) ? current : (categories[0]?.name || ""));
+  }, [categories]);
+
   const ingredientMap = useMemo(
     () => new Map(ingredients.map((ingredient) => [ingredient["Ingredient ID"], ingredient])),
     [ingredients],
   );
 
-  const rows = useMemo(
+  const allRows = useMemo(
     () => formula.map((item) => ({ ...item, ingredient: ingredientMap.get(item.id)! })).filter((row) => row.ingredient),
     [formula, ingredientMap],
   );
+  const enabledCategoryNames = useMemo(() => new Set(categories.map((category) => category.name)), [categories]);
+  const rows = useMemo(
+    () => allRows.filter((row) => enabledCategoryNames.has(row.ingredient.Category)),
+    [allRows, enabledCategoryNames],
+  );
 
-  const totalInclusion = useMemo(() => formula.reduce((sum, item) => sum + item.inclusion, 0), [formula]);
+  const totalInclusion = useMemo(() => rows.reduce((sum, item) => sum + item.inclusion, 0), [rows]);
   const isValid = Math.abs(totalInclusion - 100) < 0.0001;
 
   const totals = useMemo(() => {
     return Object.fromEntries(NUTRIENTS.map(([key]) => [key, rows.reduce((sum, row) => sum + numberValue(row.ingredient, key) * row.inclusion / 100, 0)]));
   }, [rows]);
 
-  const categoryResults = useMemo(() => CATEGORY_ORDER.map((category) => {
-    const categoryRows = rows.filter((row) => row.ingredient.Category === category);
+  const categoryResults = useMemo(() => categories.map((category) => {
+    const categoryRows = rows.filter((row) => row.ingredient.Category === category.name);
     return {
-      category,
+      category: category.name,
       inclusion: categoryRows.reduce((sum, row) => sum + row.inclusion, 0),
+      abc3: categoryRows.reduce((sum, row) => sum + numberValue(row.ingredient, "ABC3 (mEq/kg)") * row.inclusion / 100, 0),
       abc4: categoryRows.reduce((sum, row) => sum + numberValue(row.ingredient, "ABC4 (mEq/kg)") * row.inclusion / 100, 0),
     };
-  }), [rows]);
+  }), [categories, rows]);
 
   const updateInclusion = (id: string, value: string) => {
     setInclusionDrafts((current) => ({ ...current, [id]: value }));
@@ -212,7 +219,7 @@ export default function Home() {
   };
 
   const shareResult = async () => {
-    const text = `Numega: Protein ${formatValue(totals["Crude Protein (%)"], "%")}% · ABC4 ${formatValue(totals["ABC4 (mEq/kg)"], "mEq/kg")} mEq/kg`;
+    const text = `Numega: Protein ${formatValue(totals["Crude Protein (%)"], "%")}% · ABC4 ${formatValue(totals["ABC4 (mEq/kg)"], "meq/kg")} meq/kg`;
     if (navigator.share) await navigator.share({ title: "Numega Formula Results", text });
     else await navigator.clipboard.writeText(text);
   };
@@ -230,11 +237,6 @@ export default function Home() {
 
   const detail = detailId ? rows.find((row) => row.id === detailId) : undefined;
   const totalAbc4 = totals["ABC4 (mEq/kg)"] || 0;
-  const categoryMax = Math.max(0, ...categoryResults.map((item) => item.abc4));
-  const categoryMin = Math.min(0, ...categoryResults.map((item) => item.abc4));
-  const categoryRange = Math.max(1, categoryMax - categoryMin);
-  const categoryZeroFromBottom = Math.abs(categoryMin) / categoryRange * 100;
-  const categoryZeroFromTop = categoryMax / categoryRange * 100;
   const topContributors = [...rows]
     .map((row) => ({ ...row, abc4: numberValue(row.ingredient, "ABC4 (mEq/kg)") * row.inclusion / 100 }))
     .sort((a, b) => b.abc4 - a.abc4)
@@ -264,23 +266,23 @@ export default function Home() {
           <section className={`mix-status ${isValid ? "valid" : "warning"}`}>
             <div className="mix-status-row">
               <div><span>Total inclusion</span><strong>{totalInclusion.toLocaleString("en-US")}%</strong></div>
-              <p>{isValid ? "✓ Ready to calculate" : totalInclusion < 100 ? `${(100 - totalInclusion).toLocaleString("en-US")}% remaining` : `${(totalInclusion - 100).toLocaleString("en-US")}% over limit`}</p>
+              <p>{isValid ? "✓ At the 100% target" : totalInclusion < 100 ? `${(100 - totalInclusion).toLocaleString("en-US")}% below target` : `${(totalInclusion - 100).toLocaleString("en-US")}% above target`}</p>
             </div>
             <div className="progress-track"><span style={{ width: `${Math.min(100, totalInclusion)}%` }} /></div>
-            {!isValid && <small>Total inclusion must equal exactly 100% before calculation.</small>}
+            {!isValid && <small>You can still calculate with the current total inclusion.</small>}
           </section>
 
-          <section className="builder-content" aria-label="Six ingredient categories">
-            {CATEGORY_ORDER.map((category, index) => {
-              const categoryRows = rows.filter((row) => row.ingredient.Category === category);
+          <section className="builder-content" aria-label="Enabled ingredient categories">
+            {categories.map((category, index) => {
+              const categoryRows = rows.filter((row) => row.ingredient.Category === category.name);
               const categoryTotal = categoryRows.reduce((sum, row) => sum + row.inclusion, 0);
-              const isOpen = expanded === category;
+              const isOpen = expanded === category.name;
               return (
-                <article className={`category-card ${isOpen ? "expanded" : ""}`} key={category}>
-                  <button className="category-heading" onClick={(event) => toggleCategory(category, event)} aria-expanded={isOpen}>
+                <article className={`category-card ${isOpen ? "expanded" : ""}`} key={category.id}>
+                  <button className="category-heading" onClick={(event) => toggleCategory(category.name, event)} aria-expanded={isOpen}>
                     <span className="chevron">›</span>
-                    <span className="category-icon"><Image src={icons[category]} alt="" aria-hidden="true" width={64} height={64} /></span>
-                    <strong>{index + 1}. {CATEGORY_LABELS[category]}</strong>
+                    <span className="category-icon"><Image src={category.icon || "/icons/categories/others.png"} alt="" aria-hidden="true" width={64} height={64} /></span>
+                    <strong>{index + 1}. {category.name}</strong>
                     <span className="count-badge">{categoryRows.length} items · {categoryTotal.toLocaleString("en-US")}%</span>
                   </button>
                   {isOpen && (
@@ -299,7 +301,7 @@ export default function Home() {
                           </div>
                         </div>
                       ))}
-                      <button className="add-ingredient" onClick={() => openPicker(category)}><span>＋</span> Add ingredient</button>
+                      <button className="add-ingredient" onClick={() => openPicker(category.name)}><span>＋</span> Add ingredient</button>
                     </div>
                   )}
                 </article>
@@ -309,7 +311,7 @@ export default function Home() {
 
           <footer className="action-dock">
             <button className="secondary-button" onClick={resetFormula}>Reset</button>
-            <button className="primary-button" disabled={!isValid} onClick={() => setShowResults(true)}><span>ϟ</span> Calculate</button>
+            <button className="primary-button" onClick={() => setShowResults(true)}><span>ϟ</span> Calculate</button>
           </footer>
         </>
       ) : (
@@ -320,7 +322,7 @@ export default function Home() {
             <button className="icon-button" onClick={shareResult} aria-label="Share">↗</button>
           </header>
           <div className="results-content">
-            <div className="success-pill">✓ Total inclusion: 100%</div>
+            <div className="success-pill">Total inclusion: {totalInclusion.toLocaleString("en-US")}%</div>
             <nav className="result-tabs" aria-label="Result view">
               <button className={resultTab === "overview" ? "active" : ""} onClick={() => setResultTab("overview")}>Overview</button>
               <button className={resultTab === "groups" ? "active" : ""} onClick={() => setResultTab("groups")}>Details</button>
@@ -330,8 +332,8 @@ export default function Home() {
               <div className="result-stack">
                 <ResultSection title="General Indicators">
                   <div className="metric-grid two">
-                    <Metric label="ABC3" value={formatValue(totals["ABC3 (mEq/kg)"], "mEq/kg")} unit="mEq/kg" />
-                    <Metric label="ABC4" value={formatValue(totals["ABC4 (mEq/kg)"], "mEq/kg")} unit="mEq/kg" />
+                    <Metric label="ABC3" value={formatValue(totals["ABC3 (mEq/kg)"], "meq/kg")} unit="meq/kg" />
+                    <Metric label="ABC4" value={formatValue(totals["ABC4 (mEq/kg)"], "meq/kg")} unit="meq/kg" />
                   </div>
                 </ResultSection>
                 <ResultSection title="Macro">
@@ -360,35 +362,30 @@ export default function Home() {
 
             {resultTab === "groups" && (
               <div className="detail-results">
-                <ResultSection title="ABC4 Contribution by Category">
+                <ResultSection title="ABC3 & ABC4 Contribution by Category">
                   {negativeAbc4Rows.length > 0 && (
                     <div className="chart-note warning">
                       <strong>Negative values are not errors.</strong>
                       <span>
-                        {negativeAbc4Rows.map((row) => `${row.ingredient["Ingredient Name"]} ${(numberValue(row.ingredient, "ABC4 (mEq/kg)") * row.inclusion / 100).toFixed(1)} mEq/kg`).join(" · ")} reduce the total ABC4 value.
+                        {negativeAbc4Rows.map((row) => `${row.ingredient["Ingredient Name"]} ${(numberValue(row.ingredient, "ABC4 (mEq/kg)") * row.inclusion / 100).toFixed(1)} meq/kg`).join(" · ")} reduce the total ABC4 value.
                       </span>
                     </div>
                   )}
                   <div className="category-summary-table">
-                    <div className="summary-head"><span>Ingredient Category</span><span>ABC4</span><span>% Contribution</span></div>
+                    <div className="summary-head"><span>Ingredient Category</span><span>ABC3</span><span>ABC4</span><span>%</span></div>
                     {categoryResults.map((item) => {
                       const percent = Math.abs(totalAbc4) > 0.0000001 ? item.abc4 / totalAbc4 * 100 : null;
-                      return <div className="summary-row" key={item.category}><strong>{CATEGORY_LABELS[item.category]}</strong><span className={item.abc4 < 0 ? "negative-value" : ""}>{item.abc4.toFixed(1)}</span><span className={percent !== null && percent < 0 ? "negative-value" : ""}>{percent === null ? "—" : `${percent.toFixed(1)}%`}</span></div>;
+                      return <div className="summary-row" key={item.category}><strong>{item.category}</strong><span className={item.abc3 < 0 ? "negative-value" : ""}>{item.abc3.toFixed(1)}</span><span className={item.abc4 < 0 ? "negative-value" : ""}>{item.abc4.toFixed(1)}</span><span className={percent !== null && percent < 0 ? "negative-value" : ""}>{percent === null ? "—" : `${percent.toFixed(1)}%`}</span></div>;
                     })}
                   </div>
                 </ResultSection>
 
                 <ResultSection title="ABC4 Contribution by Category">
-                  <div className="category-column-chart" role="img" aria-label="ABC4 contribution bar chart by category">
-                    <div className="column-grid" />
-                    <div className="column-series">
-                      {categoryResults.map((item, index) => {
-                        const height = Math.abs(item.abc4) / categoryRange * 100;
-                        const colors = ["yellow", "green", "teal", "gray", "orange", "blue"];
-                        return <div className="column-item" key={item.category}><div className="column-space"><span className="zero-axis" style={{ bottom: `${categoryZeroFromBottom}%` }} /><i className={`${item.abc4 < 0 ? "negative" : "positive"} ${colors[index]}`} style={item.abc4 < 0 ? { top: `${categoryZeroFromTop}%`, height: `${height}%` } : { bottom: `${categoryZeroFromBottom}%`, height: `${height}%` }}><b>{item.abc4.toFixed(1)}</b></i></div><span>{CATEGORY_LABELS[item.category]}</span></div>;
-                      })}
-                    </div>
-                  </div>
+                  <CategoryWaterfallChart items={categoryResults} metric="ABC4" />
+                </ResultSection>
+
+                <ResultSection title="ABC3 Contribution by Category">
+                  <CategoryWaterfallChart items={categoryResults} metric="ABC3" />
                 </ResultSection>
 
                 <ResultSection title="Top 10 ABC4 Contributors">
@@ -419,7 +416,7 @@ export default function Home() {
         <div className="sheet-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setPickerCategory(null); }}>
           <section className="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="picker-title">
             <div className="sheet-handle" />
-            <header><h2 id="picker-title">Select Ingredients — {CATEGORY_LABELS[pickerCategory]}</h2><button onClick={() => setPickerCategory(null)} aria-label="Close">×</button></header>
+            <header><h2 id="picker-title">Select Ingredients — {pickerCategory}</h2><button onClick={() => setPickerCategory(null)} aria-label="Close">×</button></header>
             <label className="search-field"><span>⌕</span><input autoFocus value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search ingredients..." /></label>
             <div className="picker-list">
               {ingredients.filter((ingredient) => ingredient.Category === pickerCategory && ingredient["Ingredient Name"].toLowerCase().includes(search.toLowerCase())).map((ingredient) => {
@@ -438,7 +435,7 @@ export default function Home() {
         <div className="sheet-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setDetailId(null); }}>
           <section className="bottom-sheet detail-sheet" role="dialog" aria-modal="true" aria-labelledby="detail-title">
             <div className="sheet-handle" />
-            <header><div><h2 id="detail-title">{detail.ingredient["Ingredient Name"]}</h2><p><i>{detail.ingredient["Scientific Name"]}</i> · {CATEGORY_LABELS[detail.ingredient.Category]} · {detail.ingredient.Origin}</p></div><button onClick={() => setDetailId(null)} aria-label="Close">×</button></header>
+            <header><div><h2 id="detail-title">{detail.ingredient["Ingredient Name"]}</h2><p><i>{detail.ingredient["Scientific Name"]}</i> · {detail.ingredient.Category} · {detail.ingredient.Origin}</p></div><button onClick={() => setDetailId(null)} aria-label="Close">×</button></header>
             <h3><MiniIcon>▥</MiniIcon> Contribution at Current Inclusion ({detail.inclusion}%)</h3>
             <div className="detail-metrics">
               {[NUTRIENTS[1], NUTRIENTS[2], NUTRIENTS[3], NUTRIENTS[9]].map(([key, label, unit]) => <Metric key={key} label={label} value={formatValue(numberValue(detail.ingredient, key) * detail.inclusion / 100, unit)} unit={unit} />)}
@@ -465,4 +462,69 @@ function ResultSection({ title, children }: { title: string; children: React.Rea
 
 function Metric({ label, value, unit }: { label: string; value: string; unit: string }) {
   return <div className="metric"><span>{label}</span><div><strong>{value}</strong><small>{unit}</small></div></div>;
+}
+
+function CategoryWaterfallChart({ items, metric }: { items: CategoryResult[]; metric: ChartMetric }) {
+  const negativeColors = ["#dc3f32", "#e8732f", "#b82f52"];
+  const positiveColors = ["#48545d", "#8d321e", "#2f806c", "#c29426", "#547faf", "#785ca0"];
+  const chartItems = items.map((item) => ({ category: item.category, value: metric === "ABC3" ? item.abc3 : item.abc4 }));
+  const negativeItems = chartItems.filter((item) => item.value < 0).map((item, index) => ({ ...item, color: negativeColors[index % negativeColors.length] }));
+  const positiveItems = chartItems.filter((item) => item.value > 0).map((item, index) => ({ ...item, color: positiveColors[index % positiveColors.length] }));
+  const zeroItems = chartItems.filter((item) => Math.abs(item.value) < 0.0000001).map((item) => ({ ...item, color: "#b7c0bb" }));
+  const negativeTotal = negativeItems.reduce((sum, item) => sum + item.value, 0);
+  const finalTotal = chartItems.reduce((sum, item) => sum + item.value, 0);
+  const domainMin = Math.min(0, negativeTotal);
+  const domainMax = Math.max(0, finalTotal);
+  const rawRange = Math.max(1, domainMax - domainMin);
+  const roughStep = rawRange / 4;
+  const stepPower = 10 ** Math.floor(Math.log10(roughStep));
+  const normalizedStep = roughStep / stepPower;
+  const niceStep = (normalizedStep <= 1 ? 1 : normalizedStep <= 2 ? 2 : normalizedStep <= 5 ? 5 : 10) * stepPower;
+  const chartMin = Math.min(0, Math.floor(domainMin / niceStep) * niceStep);
+  const chartMax = Math.max(niceStep, Math.ceil(domainMax / niceStep) * niceStep);
+  const chartRange = chartMax - chartMin;
+  const axisTicks = Array.from({ length: Math.round(chartRange / niceStep) + 1 }, (_, index) => chartMin + index * niceStep);
+  const bottomAt = (value: number) => (value - chartMin) / chartRange * 100;
+  const heightOf = (value: number) => Math.abs(value) / chartRange * 100;
+  const negativeSegments = negativeItems.map((item, index) => {
+    const previous = negativeItems.slice(0, index).reduce((sum, segment) => sum + segment.value, 0);
+    const next = previous + item.value;
+    const segment = { ...item, bottom: bottomAt(next), height: heightOf(item.value) };
+    return segment;
+  });
+  const positiveSegments = positiveItems.map((item, index) => {
+    const previous = positiveItems.slice(0, index).reduce((sum, segment) => sum + segment.value, 0);
+    return { ...item, bottom: bottomAt(negativeTotal + previous), height: heightOf(item.value) };
+  });
+  const legendItems = [...negativeItems, ...positiveItems, ...zeroItems];
+  const accessibleSummary = `${metric} category waterfall. Negative total ${negativeTotal.toFixed(1)} meq/kg. Positive categories start at the negative total. Final total ${finalTotal.toFixed(1)} meq/kg.`;
+
+  return (
+    <div className="waterfall-chart">
+      <div className="waterfall-summary"><span>Current</span><strong>{finalTotal.toFixed(1)} <small>meq/kg</small></strong></div>
+      <div className="waterfall-body">
+        <div className="waterfall-plot" role="img" aria-label={accessibleSummary}>
+          <div className="waterfall-chart-area">
+            <div className="waterfall-grid">{axisTicks.map((tick) => <span key={tick} style={{ bottom: `${bottomAt(tick)}%` }} />)}</div>
+            <div className="waterfall-y-axis" aria-hidden="true">{axisTicks.map((tick) => <span key={tick} style={{ bottom: `${bottomAt(tick)}%` }}>{tick.toLocaleString("en-US")}</span>)}</div>
+            <span className="waterfall-zero-axis" style={{ bottom: `${bottomAt(0)}%` }}><b>0</b></span>
+            <div className="waterfall-stack waterfall-negative-stack" aria-hidden="true">
+              {negativeSegments.map((item) => <i key={item.category} style={{ bottom: `${item.bottom}%`, height: `${item.height}%`, backgroundColor: item.color }} />)}
+            </div>
+            <div className="waterfall-stack waterfall-positive-stack" aria-hidden="true">
+              {positiveSegments.map((item) => <i key={item.category} style={{ bottom: `${item.bottom}%`, height: `${item.height}%`, backgroundColor: item.color }} />)}
+              <strong className={`waterfall-total ${finalTotal < 0 ? "negative" : ""}`} style={{ bottom: `${bottomAt(finalTotal)}%` }}>Σ={finalTotal.toFixed(1)}</strong>
+            </div>
+          </div>
+        </div>
+        <aside className="waterfall-legend" aria-label="ABC4 contribution values by ingredient category">
+          {legendItems.map((item) => <CategoryLegendRow item={item} key={item.category} />)}
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+function CategoryLegendRow({ item }: { item: ChartCategoryItem }) {
+  return <div className="waterfall-category-row"><i style={{ backgroundColor: item.color }} /><b>{item.category}</b><small className={item.value < 0 ? "negative-value" : ""}>{item.value.toFixed(1)} <em>meq/kg</em></small></div>;
 }

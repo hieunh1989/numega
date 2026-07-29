@@ -24,6 +24,22 @@ export function statusValue(value: unknown): "Active" | "Inactive" {
   return value === "Inactive" ? "Inactive" : "Active";
 }
 
+const categoryIcons = new Set([
+  "/icons/categories/cereals.png",
+  "/icons/categories/protein-sources.png",
+  "/icons/categories/oils-fats.png",
+  "/icons/categories/minerals.png",
+  "/icons/categories/amino-acids.png",
+  "/icons/categories/others.png",
+]);
+
+export function categoryIconValue(value: unknown) {
+  const icon = text(value);
+  if (categoryIcons.has(icon)) return icon;
+  if (icon.length <= 700_000 && /^data:image\/(?:png|jpeg|webp);base64,[a-z0-9+/=\s]+$/i.test(icon)) return icon;
+  return "/icons/categories/others.png";
+}
+
 export function numberValue(value: unknown) {
   return Number.isFinite(Number(value)) ? Number(value) : 0;
 }

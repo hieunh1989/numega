@@ -21,7 +21,7 @@ test("serves PWA images directly and keeps offline image fallbacks", async () =>
     read("public/sw.js"),
   ]);
   assert.match(nextConfig, /images:\s*\{\s*unoptimized:\s*true\s*\}/);
-  assert.match(serviceWorker, /const CACHE = "numega-v9"/);
+  assert.match(serviceWorker, /const CACHE = "numega-v10"/);
   assert.match(serviceWorker, /url\.pathname === "\/_next\/image"/);
   assert.match(serviceWorker, /caches\.match\(originalPath\)/);
   assert.match(serviceWorker, /event\.request\.mode === "navigate"/);
@@ -92,6 +92,77 @@ test("keeps empty numeric drafts editable without forcing zero back into the inp
   assert.match(calculator, /onBlur=\{\(\) => finishInclusionEdit\(row\.id\)\}/);
   assert.match(admin, /\[field\]: event\.target\.value/);
   assert.match(admin, /fieldValue === 0 \|\| fieldValue == null \? "" : String\(fieldValue\)/);
+});
+
+test("loads calculator categories from PostgreSQL and honors the admin visibility switch", async () => {
+  const [calculator, admin, categoriesApi, categoryApi, database] = await Promise.all([
+    read("app/page.tsx"),
+    read("app/admin/page.tsx"),
+    read("app/api/categories/route.ts"),
+    read("app/api/categories/[id]/route.ts"),
+    read("lib/server/database.ts"),
+  ]);
+  assert.match(database, /show_in_calculator BOOLEAN NOT NULL DEFAULT TRUE/);
+  assert.match(database, /icon TEXT NOT NULL DEFAULT '\/icons\/categories\/others\.png'/);
+  assert.match(categoriesApi, /calculatorOnly/);
+  assert.match(categoriesApi, /c\.show_in_calculator=TRUE/);
+  assert.match(categoryApi, /show_in_calculator=\$5/);
+  assert.match(admin, /Show in calculator/);
+  assert.match(admin, /type="checkbox"/);
+  assert.doesNotMatch(admin, /Built-in Icon|categoryIconOptions/);
+  assert.match(admin, /Upload Icon/);
+  assert.match(admin, /readAsDataURL/);
+  assert.match(admin, /500 KB or smaller/);
+  assert.match(calculator, /\/api\/categories\?calculator=true/);
+  assert.match(calculator, /category\.icon \|\| "\/icons\/categories\/others\.png"/);
+  assert.match(calculator, /categories\.map\(\(category, index\)/);
+  assert.doesNotMatch(calculator, /CATEGORY_ORDER\.map/);
+});
+
+test("shows admin save results as self-dismissing toast notifications", async () => {
+  const admin = await read("app/admin/page.tsx");
+  assert.match(admin, /className="toast admin-toast"/);
+  assert.match(admin, /role="status"/);
+  assert.match(admin, /aria-live="polite"/);
+  assert.match(admin, /window\.setTimeout/);
+  assert.doesNotMatch(admin, /admin-alert success/);
+});
+
+test("allows formula calculation at any total inclusion", async () => {
+  const calculator = await read("app/page.tsx");
+  assert.match(calculator, /You can still calculate with the current total inclusion/);
+  assert.match(calculator, /Total inclusion: \{totalInclusion\.toLocaleString/);
+  assert.doesNotMatch(calculator, /disabled=\{!isValid\}/);
+  assert.doesNotMatch(calculator, /must equal exactly 100% before calculation/);
+});
+
+test("shows ABC3 and ABC4 in the category contribution table", async () => {
+  const calculator = await read("app/page.tsx");
+  assert.match(calculator, /ABC3 & ABC4 Contribution by Category/);
+  assert.match(calculator, /<span>ABC3<\/span><span>ABC4<\/span><span>%<\/span>/);
+  assert.match(calculator, /item\.abc3\.toFixed\(1\)/);
+  assert.doesNotMatch(calculator, /% Contribution<\/span>/);
+});
+
+test("renders ABC4 categories as a negative-base waterfall chart", async () => {
+  const calculator = await read("app/page.tsx");
+  assert.match(calculator, /function CategoryWaterfallChart/);
+  assert.match(calculator, /metric="ABC4"/);
+  assert.match(calculator, /ABC3 Contribution by Category/);
+  assert.match(calculator, /metric="ABC3"/);
+  assert.match(calculator, /metric === "ABC3" \? item\.abc3 : item\.abc4/);
+  assert.match(calculator, /const negativeTotal/);
+  assert.match(calculator, /bottomAt\(negativeTotal \+ previous\)/);
+  assert.match(calculator, /className="waterfall-stack waterfall-negative-stack"/);
+  assert.match(calculator, /className="waterfall-stack waterfall-positive-stack"/);
+  assert.match(calculator, /className="waterfall-body"/);
+  assert.match(calculator, /className="waterfall-legend"/);
+  assert.match(calculator, /className="waterfall-y-axis"/);
+  assert.match(calculator, /function CategoryLegendRow/);
+  assert.match(calculator, /Σ=\{finalTotal\.toFixed\(1\)\}/);
+  assert.doesNotMatch(calculator, /Ingredient Category<\/strong>|Positive stack<\/span>|Zero<\/span>/);
+  assert.doesNotMatch(calculator, /<b>\{item\.abc4\.toFixed\(1\)\}<\/b><\/i>/);
+  assert.doesNotMatch(calculator, /className="category-column-chart"/);
 });
 
 test("keeps product copy in production-ready English", async () => {

@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiRequest } from "../lib/api";
 
 type Tab = "ingredients" | "categories" | "users";
-type Category = { id: string; slug: string; name: string; description: string; sort_order: number; status: "Active" | "Inactive"; ingredient_count: number };
+type Category = { id: string; slug: string; name: string; description: string; sort_order: number; status: "Active" | "Inactive"; show_in_calculator: boolean; icon: string; ingredient_count: number };
 type User = { id: string; full_name: string; email: string; role: "Admin" | "User"; status: "Active" | "Inactive"; created_at: string };
 type Ingredient = Record<string, string | number | null>;
 type Stats = { users: number; ingredients: number; categories: number };
@@ -19,7 +19,7 @@ const nutrientGroups = [
 ];
 
 const emptyUser = { full_name: "", email: "", password: "", role: "User", status: "Active" };
-const emptyCategory = { name: "", description: "", sort_order: 10, status: "Active" };
+const emptyCategory = { name: "", description: "", sort_order: 10, status: "Active", show_in_calculator: true, icon: "/icons/categories/others.png" };
 
 function emptyIngredient(categoryId = "") {
   const value: Ingredient = {
@@ -41,8 +41,9 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const noticeTimeout = useRef<number | null>(null);
   const [userDraft, setUserDraft] = useState<Record<string, string> | null>(null);
-  const [categoryDraft, setCategoryDraft] = useState<Record<string, string | number> | null>(null);
+  const [categoryDraft, setCategoryDraft] = useState<Record<string, string | number | boolean> | null>(null);
   const [ingredientDraft, setIngredientDraft] = useState<Ingredient | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -72,6 +73,10 @@ export default function AdminPage() {
       .catch(() => window.location.replace("/login?returnTo=%2Fadmin"));
   }, [loadAll]);
 
+  useEffect(() => () => {
+    if (noticeTimeout.current !== null) window.clearTimeout(noticeTimeout.current);
+  }, []);
+
   const filteredIngredients = useMemo(() => ingredients.filter((ingredient) => {
     const term = search.toLowerCase();
     const matchesSearch = !term || String(ingredient["Ingredient Name"]).toLowerCase().includes(term) || String(ingredient["Ingredient ID"]).toLowerCase().includes(term);
@@ -80,7 +85,14 @@ export default function AdminPage() {
 
   const filteredUsers = useMemo(() => users.filter((user) => !search || `${user.full_name} ${user.email}`.toLowerCase().includes(search.toLowerCase())), [users, search]);
 
-  const flash = (message: string) => { setNotice(message); window.setTimeout(() => setNotice(""), 2600); };
+  const flash = (message: string) => {
+    if (noticeTimeout.current !== null) window.clearTimeout(noticeTimeout.current);
+    setNotice(message);
+    noticeTimeout.current = window.setTimeout(() => {
+      setNotice("");
+      noticeTimeout.current = null;
+    }, 3200);
+  };
   const request = async (action: () => Promise<unknown>, success: string) => {
     setError("");
     try { await action(); await loadAll(); flash(success); return true; }
@@ -97,8 +109,39 @@ export default function AdminPage() {
   const closeModal = () => { setUserDraft(null); setCategoryDraft(null); setIngredientDraft(null); setEditingId(null); };
 
   const editUser = (user: User) => { setEditingId(user.id); setUserDraft({ full_name: user.full_name, email: user.email, password: "", role: user.role, status: user.status }); };
-  const editCategory = (category: Category) => { setEditingId(category.id); setCategoryDraft({ name: category.name, description: category.description, sort_order: category.sort_order, status: category.status }); };
+  const editCategory = (category: Category) => {
+    setEditingId(category.id);
+    setCategoryDraft({
+      name: category.name,
+      description: category.description,
+      sort_order: category.sort_order,
+      status: category.status,
+      show_in_calculator: category.show_in_calculator,
+      icon: category.icon || "/icons/categories/others.png",
+    });
+  };
   const editIngredient = (ingredient: Ingredient) => { setEditingId(String(ingredient["Ingredient ID"])); setIngredientDraft({ ...ingredient }); };
+
+  const uploadCategoryIcon = (file?: File) => {
+    if (!file || !categoryDraft) return;
+    const allowedTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
+    if (!allowedTypes.has(file.type)) {
+      setError("Category icons must be PNG, JPEG, or WebP files.");
+      return;
+    }
+    if (file.size > 500 * 1024) {
+      setError("Category icons must be 500 KB or smaller.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result !== "string") return;
+      setCategoryDraft((current) => current ? { ...current, icon: reader.result as string } : current);
+      setError("");
+    };
+    reader.onerror = () => setError("Unable to read the selected icon.");
+    reader.readAsDataURL(file);
+  };
 
   const saveUser = async () => {
     if (!userDraft) return;
@@ -145,8 +188,6 @@ export default function AdminPage() {
         </div>
 
         {error && <div className="admin-alert error"><span>!</span>{error}<button onClick={() => setError("")}>×</button></div>}
-        {notice && <div className="admin-alert success"><span>✓</span>{notice}</div>}
-
         <section className="admin-panel">
           <div className="admin-toolbar">
             <label className="admin-search"><span>⌕</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={tab === "users" ? "Search name or email..." : "Search code or name..."} /></label>
@@ -165,11 +206,13 @@ export default function AdminPage() {
 
       <nav className="admin-mobile-nav">{navItems.map((item) => <button key={item.id} className={tab === item.id ? "active" : ""} onClick={() => setTab(item.id)}><span>{item.icon}</span><small>{item.short}</small></button>)}</nav>
 
+      {notice && <div className="toast admin-toast" role="status" aria-live="polite"><span>✓</span><div><strong>{notice}</strong><small>Admin data has been updated successfully.</small></div><button onClick={() => setNotice("")} aria-label="Close notification">×</button></div>}
+
       {userDraft && <AdminModal title={editingId ? "Edit User" : "Create User"} onClose={closeModal} onSave={saveUser}><div className="admin-form-grid"><Field label="Full Name"><input value={userDraft.full_name} onChange={(event) => setUserDraft({ ...userDraft, full_name: event.target.value })} /></Field><Field label="Email"><input type="email" value={userDraft.email} onChange={(event) => setUserDraft({ ...userDraft, email: event.target.value })} /></Field><Field label={editingId ? "New Password (leave blank to keep current)" : "Password"} wide><input type="password" autoComplete="new-password" minLength={8} value={userDraft.password} onChange={(event) => setUserDraft({ ...userDraft, password: event.target.value })} placeholder="At least 8 characters" /></Field><Field label="Role"><select value={userDraft.role} onChange={(event) => setUserDraft({ ...userDraft, role: event.target.value })}><option>Admin</option><option>User</option></select></Field><Field label="Status"><StatusSelect value={userDraft.status} onChange={(value) => setUserDraft({ ...userDraft, status: value })} /></Field></div></AdminModal>}
 
-      {categoryDraft && <AdminModal title={editingId ? "Edit Category" : "Create Category"} onClose={closeModal} onSave={saveCategory}><div className="admin-form-grid"><Field label="Category Name"><input value={String(categoryDraft.name)} onChange={(event) => setCategoryDraft({ ...categoryDraft, name: event.target.value })} /></Field><Field label="Sort Order"><input type="number" value={Number(categoryDraft.sort_order)} onChange={(event) => setCategoryDraft({ ...categoryDraft, sort_order: Number(event.target.value) })} /></Field><Field label="Description" wide><textarea value={String(categoryDraft.description)} onChange={(event) => setCategoryDraft({ ...categoryDraft, description: event.target.value })} /></Field><Field label="Status"><StatusSelect value={String(categoryDraft.status)} onChange={(value) => setCategoryDraft({ ...categoryDraft, status: value })} /></Field></div></AdminModal>}
+      {categoryDraft && <AdminModal title={editingId ? "Edit Category" : "Create Category"} onClose={closeModal} onSave={saveCategory}><div className="admin-form-grid"><Field label="Category Name"><input value={String(categoryDraft.name)} onChange={(event) => setCategoryDraft({ ...categoryDraft, name: event.target.value })} /></Field><Field label="Sort Order"><input type="number" value={Number(categoryDraft.sort_order)} onChange={(event) => setCategoryDraft({ ...categoryDraft, sort_order: Number(event.target.value) })} /></Field><div className="category-icon-preview field-wide" aria-label="Selected category icon"><span style={{ backgroundImage: `url("${String(categoryDraft.icon || "/icons/categories/others.png")}")` }} /><div><strong>Icon Preview</strong><small>{String(categoryDraft.icon || "").startsWith("data:image/") ? "Uploaded icon" : "Current icon"}</small></div></div><label className="category-icon-upload field-wide"><span><strong>Upload Icon</strong><small>PNG, JPEG, or WebP · Maximum 500 KB</small></span><input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => { uploadCategoryIcon(event.target.files?.[0]); event.currentTarget.value = ""; }} /></label><Field label="Description" wide><textarea value={String(categoryDraft.description)} onChange={(event) => setCategoryDraft({ ...categoryDraft, description: event.target.value })} /></Field><Field label="Status"><StatusSelect value={String(categoryDraft.status)} onChange={(value) => setCategoryDraft({ ...categoryDraft, status: value })} /></Field><label className="switch-field field-wide"><span><strong>Show in calculator</strong><small>Allow this category to appear in the frontend formula input.</small></span><input type="checkbox" checked={categoryDraft.show_in_calculator !== false} onChange={(event) => setCategoryDraft({ ...categoryDraft, show_in_calculator: event.target.checked })} /><i aria-hidden="true" /></label></div></AdminModal>}
 
-      {ingredientDraft && <AdminModal title={editingId ? "Edit Ingredient" : "Create Ingredient"} onClose={closeModal} onSave={saveIngredient} large><div className="ingredient-form"><h3>Basic Information</h3><div className="admin-form-grid"><Field label="Ingredient ID"><input disabled={Boolean(editingId)} value={String(ingredientDraft["Ingredient ID"] || "")} onChange={(event) => setIngredientDraft({ ...ingredientDraft, "Ingredient ID": event.target.value })} placeholder="ING-029" /></Field><Field label="Ingredient Name"><input value={String(ingredientDraft["Ingredient Name"] || "")} onChange={(event) => setIngredientDraft({ ...ingredientDraft, "Ingredient Name": event.target.value })} /></Field><Field label="Scientific Name"><input value={String(ingredientDraft["Scientific Name"] || "")} onChange={(event) => setIngredientDraft({ ...ingredientDraft, "Scientific Name": event.target.value })} /></Field><Field label="Category"><select value={String(ingredientDraft["Category ID"] || "")} onChange={(event) => setIngredientDraft({ ...ingredientDraft, "Category ID": event.target.value })}>{categories.map((category) => <option value={category.id} key={category.id}>{category.name}</option>)}</select></Field><Field label="Origin"><select value={String(ingredientDraft.Origin || "Local")} onChange={(event) => setIngredientDraft({ ...ingredientDraft, Origin: event.target.value })}><option>Local</option><option>Import</option></select></Field><Field label="Status"><StatusSelect value={String(ingredientDraft.Status)} onChange={(value) => setIngredientDraft({ ...ingredientDraft, Status: value })} /></Field><Field label="Notes" wide><textarea value={String(ingredientDraft.Notes || "")} onChange={(event) => setIngredientDraft({ ...ingredientDraft, Notes: event.target.value })} /></Field></div>{nutrientGroups.map((group) => <section key={group.title}><h3>{group.title}</h3><div className="nutrient-form-grid">{group.fields.map((field) => { const fieldValue = ingredientDraft[field]; return <Field label={field} key={field}><input type="number" step="any" value={fieldValue === 0 || fieldValue == null ? "" : String(fieldValue)} placeholder="0" onChange={(event) => setIngredientDraft({ ...ingredientDraft, [field]: event.target.value })} /></Field>; })}</div></section>)}</div></AdminModal>}
+      {ingredientDraft && <AdminModal title={editingId ? "Edit Ingredient" : "Create Ingredient"} onClose={closeModal} onSave={saveIngredient} large><div className="ingredient-form"><h3>Basic Information</h3><div className="admin-form-grid"><Field label="Ingredient ID"><input disabled={Boolean(editingId)} value={String(ingredientDraft["Ingredient ID"] || "")} onChange={(event) => setIngredientDraft({ ...ingredientDraft, "Ingredient ID": event.target.value })} placeholder="ING-029" /></Field><Field label="Ingredient Name"><input value={String(ingredientDraft["Ingredient Name"] || "")} onChange={(event) => setIngredientDraft({ ...ingredientDraft, "Ingredient Name": event.target.value })} /></Field><Field label="Scientific Name"><input value={String(ingredientDraft["Scientific Name"] || "")} onChange={(event) => setIngredientDraft({ ...ingredientDraft, "Scientific Name": event.target.value })} /></Field><Field label="Category"><select value={String(ingredientDraft["Category ID"] || "")} onChange={(event) => setIngredientDraft({ ...ingredientDraft, "Category ID": event.target.value })}>{categories.map((category) => <option value={category.id} key={category.id}>{category.name}</option>)}</select></Field><Field label="Origin"><select value={String(ingredientDraft.Origin || "Local")} onChange={(event) => setIngredientDraft({ ...ingredientDraft, Origin: event.target.value })}><option>Local</option><option>Import</option></select></Field><Field label="Status"><StatusSelect value={String(ingredientDraft.Status)} onChange={(value) => setIngredientDraft({ ...ingredientDraft, Status: value })} /></Field><Field label="Notes" wide><textarea value={String(ingredientDraft.Notes || "")} onChange={(event) => setIngredientDraft({ ...ingredientDraft, Notes: event.target.value })} /></Field></div>{nutrientGroups.map((group) => <section key={group.title}><h3>{group.title}</h3><div className="nutrient-form-grid">{group.fields.map((field) => { const fieldValue = ingredientDraft[field]; return <Field label={field.replaceAll("mEq", "meq")} key={field}><input type="number" step="any" value={fieldValue === 0 || fieldValue == null ? "" : String(fieldValue)} placeholder="0" onChange={(event) => setIngredientDraft({ ...ingredientDraft, [field]: event.target.value })} /></Field>; })}</div></section>)}</div></AdminModal>}
     </main>
   );
 }
@@ -193,7 +236,7 @@ function IngredientList({ ingredients, onEdit, onDelete }: { ingredients: Ingred
   return <div className="admin-list">{ingredients.map((item) => <article className="admin-row ingredient-admin-row" key={String(item["Ingredient ID"])}><div className="row-code">{item["Ingredient ID"]}</div><div className="row-main"><strong>{item["Ingredient Name"]}</strong><small><i>{item["Scientific Name"]}</i> · {item.Category}</small></div><div className="row-metrics"><span>Protein <b>{Number(item["Crude Protein (%)"]).toFixed(1)}%</b></span><span>ABC4 <b>{Number(item["ABC4 (mEq/kg)"]).toFixed(0)}</b></span></div><StatusPill value={String(item.Status)} /><RowActions onEdit={() => onEdit(item)} onDelete={() => onDelete(item)} /></article>)}</div>;
 }
 function CategoryList({ categories, onEdit, onDelete }: { categories: Category[]; onEdit: (item: Category) => void; onDelete: (item: Category) => void }) {
-  return <div className="admin-list">{categories.map((item) => <article className="admin-row" key={item.id}><div className="category-order">{item.sort_order}</div><div className="row-main"><strong>{item.name}</strong><small>{item.description || "No description"}</small></div><span className="count-chip">{item.ingredient_count} ingredients</span><StatusPill value={item.status} /><RowActions onEdit={() => onEdit(item)} onDelete={() => onDelete(item)} /></article>)}</div>;
+  return <div className="admin-list">{categories.map((item) => <article className="admin-row" key={item.id}><div className="category-order category-order-icon" style={{ backgroundImage: `url("${item.icon || "/icons/categories/others.png"}")` }} aria-label={`${item.name} icon`} /><div className="row-main"><strong>{item.name}</strong><small>{item.description || "No description"} · Order {item.sort_order}</small></div><div className="category-meta"><span className={`calculator-chip ${item.show_in_calculator ? "shown" : "hidden"}`}>{item.show_in_calculator ? "Shown in calculator" : "Hidden from calculator"}</span><span className="count-chip">{item.ingredient_count} ingredients</span></div><StatusPill value={item.status} /><RowActions onEdit={() => onEdit(item)} onDelete={() => onDelete(item)} /></article>)}</div>;
 }
 function UserList({ users, onEdit, onDelete }: { users: User[]; onEdit: (item: User) => void; onDelete: (item: User) => void }) {
   if (!users.length) return <div className="admin-empty">No users found.</div>;

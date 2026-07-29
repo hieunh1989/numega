@@ -28,12 +28,12 @@ export const ingredientDatabaseColumns = [
 ] as const;
 
 const categorySeeds = [
-  ["cereals", "Cereals", "Grains and starch sources", 1],
-  ["protein-sources", "Protein Sources", "Protein sources", 2],
-  ["energy-oils-fats", "Energy (Oils & Fats)", "Oils, fats, and energy sources", 3],
-  ["minerals", "Minerals", "Macro and trace minerals", 4],
-  ["amino-acids", "Amino Acids", "Supplemental amino acids", 5],
-  ["others", "Others", "Premixes, enzymes, and other ingredients", 6],
+  ["cereals", "Cereals", "Grains and starch sources", 1, "/icons/categories/cereals.png"],
+  ["protein-sources", "Protein Sources", "Protein sources", 2, "/icons/categories/protein-sources.png"],
+  ["energy-oils-fats", "Energy (Oils & Fats)", "Oils, fats, and energy sources", 3, "/icons/categories/oils-fats.png"],
+  ["minerals", "Minerals", "Macro and trace minerals", 4, "/icons/categories/minerals.png"],
+  ["amino-acids", "Amino Acids", "Supplemental amino acids", 5, "/icons/categories/amino-acids.png"],
+  ["others", "Others", "Premixes, enzymes, and other ingredients", 6, "/icons/categories/others.png"],
 ] as const;
 
 async function initializeDatabase() {
@@ -45,10 +45,27 @@ async function initializeDatabase() {
       description TEXT NOT NULL DEFAULT '',
       sort_order INTEGER NOT NULL DEFAULT 0,
       status TEXT NOT NULL DEFAULT 'Active' CHECK (status IN ('Active', 'Inactive')),
+      show_in_calculator BOOLEAN NOT NULL DEFAULT TRUE,
+      icon TEXT NOT NULL DEFAULT '/icons/categories/others.png',
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+  await pool.query("ALTER TABLE categories ADD COLUMN IF NOT EXISTS show_in_calculator BOOLEAN NOT NULL DEFAULT TRUE");
+  await pool.query("ALTER TABLE categories ADD COLUMN IF NOT EXISTS icon TEXT");
+  await pool.query(`
+    UPDATE categories SET icon = CASE id
+      WHEN 'cereals' THEN '/icons/categories/cereals.png'
+      WHEN 'protein-sources' THEN '/icons/categories/protein-sources.png'
+      WHEN 'energy-oils-fats' THEN '/icons/categories/oils-fats.png'
+      WHEN 'minerals' THEN '/icons/categories/minerals.png'
+      WHEN 'amino-acids' THEN '/icons/categories/amino-acids.png'
+      ELSE '/icons/categories/others.png'
+    END
+    WHERE icon IS NULL OR icon = ''
+  `);
+  await pool.query("ALTER TABLE categories ALTER COLUMN icon SET DEFAULT '/icons/categories/others.png'");
+  await pool.query("ALTER TABLE categories ALTER COLUMN icon SET NOT NULL");
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
@@ -112,13 +129,13 @@ async function initializeDatabase() {
   await pool.query("CREATE INDEX IF NOT EXISTS ingredients_category_idx ON ingredients(category_id)");
   await pool.query("CREATE INDEX IF NOT EXISTS ingredients_status_idx ON ingredients(status)");
 
-  for (const [slug, name, description, sortOrder] of categorySeeds) {
+  for (const [slug, name, description, sortOrder, icon] of categorySeeds) {
     await pool.query(
-      `INSERT INTO categories (id, slug, name, description, sort_order)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO categories (id, slug, name, description, sort_order, icon)
+       VALUES ($1, $2, $3, $4, $5, $6)
        ON CONFLICT (id) DO UPDATE SET slug=EXCLUDED.slug, name=EXCLUDED.name,
        description=EXCLUDED.description, sort_order=EXCLUDED.sort_order`,
-      [slug, slug, name, description, sortOrder],
+      [slug, slug, name, description, sortOrder, icon],
     );
   }
 

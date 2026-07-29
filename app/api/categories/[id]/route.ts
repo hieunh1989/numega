@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { handleApi, numberValue, requireAdmin, statusValue, text } from "@/lib/server/api";
+import { categoryIconValue, handleApi, numberValue, requireAdmin, statusValue, text } from "@/lib/server/api";
 import { pool } from "@/lib/server/database";
 
 export const runtime = "nodejs";
@@ -15,8 +15,8 @@ export async function PUT(request: NextRequest, context: Context) {
     const name = text(body.name);
     if (!name) return NextResponse.json({ message: "Category name is required." }, { status: 400 });
     const result = await pool.query(
-      "UPDATE categories SET name=$1, description=$2, sort_order=$3, status=$4, updated_at=NOW() WHERE id=$5 RETURNING *",
-      [name, text(body.description), numberValue(body.sort_order), statusValue(body.status), id],
+      "UPDATE categories SET name=$1, description=$2, sort_order=$3, status=$4, show_in_calculator=$5, icon=$6, updated_at=NOW() WHERE id=$7 RETURNING *",
+      [name, text(body.description), numberValue(body.sort_order), statusValue(body.status), body.show_in_calculator !== false, categoryIconValue(body.icon), id],
     );
     if (!result.rowCount) return NextResponse.json({ message: "Category not found." }, { status: 404 });
     return NextResponse.json(result.rows[0]);
