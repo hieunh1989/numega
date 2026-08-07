@@ -152,9 +152,62 @@ test("shows ABC3 and ABC4 in the category contribution table", async () => {
   assert.doesNotMatch(calculator, /% Contribution<\/span>/);
 });
 
+test("renders ABC3 and ABC4 status gauges from zero with risk thresholds", async () => {
+  const [calculator, styles] = await Promise.all([
+    read("app/page.tsx"),
+    read("app/globals.css"),
+  ]);
+  assert.match(calculator, /function AbcStatusGauge/);
+  assert.match(calculator, /function AbcRecommendation/);
+  assert.match(calculator, /Feed ABC Current Status/);
+  assert.match(calculator, /metric="ABC3"[^>]+excellentMin=\{150\}[^>]+excellentMax=\{300\}[^>]+acceptableMax=\{450\}/);
+  assert.match(calculator, /metric="ABC4"[^>]+excellentMin=\{350\}[^>]+excellentMax=\{500\}[^>]+acceptableMax=\{650\}/);
+  assert.match(calculator, /<span style=\{\{ left: "0%" \}\}>0<\/span>/);
+  assert.match(calculator, /Current status/);
+  assert.match(calculator, /High Risk/);
+  assert.doesNotMatch(calculator, /<small>Current value<\/small>/);
+  assert.match(calculator, /Recommendations/);
+  assert.match(calculator, /\(value - excellentMax\) \/ 10/);
+  assert.match(calculator, /ABC\) profile, Numega recommends/);
+  assert.match(calculator, /Acidifier \(Paraformic Acid\)/);
+  assert.match(calculator, /row\.ingredient\["Ingredient ID"\] === "ING-018"/);
+  assert.match(calculator, /Ingredient Name"\]\.trim\(\)\.toLowerCase\(\) === "limestone"/);
+  assert.match(calculator, /recommendation-checklist/);
+  assert.match(calculator, /\{hasLimestone && <li><i aria-hidden="true">✓<\/i><span><strong>Reduce Limestone \/ Calcium Carbonate inclusion\.<\/strong><\/span><\/li>\}/);
+  assert.match(calculator, /<li><i aria-hidden="true">✓<\/i><span><strong>Highly Recommended:/);
+  assert.match(styles, /\.abc-gauge-track/);
+  assert.match(styles, /\.abc-gauge-marker/);
+  assert.match(styles, /\.recommendation-dialog/);
+  assert.match(styles, /\.recommendation-checklist li > i/);
+  assert.match(styles, /\.recommendation-checklist li \{ display: flex;/);
+  assert.match(styles, /column-gap: 12px/);
+  assert.match(styles, /background: var\(--primary\); color: white/);
+  assert.match(styles, /\.abc-gauge-grid \{ grid-template-columns: 1fr; \}/);
+});
+
+test("forecasts feed quality stars from ABC4 status only", async () => {
+  const [calculator, styles] = await Promise.all([
+    read("app/page.tsx"),
+    read("app/globals.css"),
+  ]);
+  assert.match(calculator, /Feed Quality Forecast/);
+  assert.match(calculator, /function FeedQualityForecast\(\{ abc4 \}/);
+  assert.match(calculator, /abcStatus\(abc4, 500, 650\)/);
+  assert.match(calculator, /className === "excellent" \? 5 : status\.className === "acceptable" \? 3 : 1/);
+  assert.match(calculator, /Salmonella control/);
+  assert.match(calculator, /Feed hygiene/);
+  assert.match(calculator, /Protein digestion/);
+  assert.match(calculator, /Buffering reduction/);
+  assert.match(calculator, /\{rating\} out of 5 stars/);
+  assert.match(styles, /\.feed-quality-row/);
+  assert.match(styles, /\.quality-stars i\.filled/);
+});
+
 test("renders ABC4 categories as a negative-base waterfall chart", async () => {
   const calculator = await read("app/page.tsx");
   assert.match(calculator, /function CategoryWaterfallChart/);
+  assert.match(calculator, /CategoryWaterfallChart items=\{categoryResults\} metric="ABC4" hasLimestone=\{hasLimestone\}/);
+  assert.match(calculator, /CategoryWaterfallChart items=\{categoryResults\} metric="ABC3" hasLimestone=\{hasLimestone\}/);
   assert.match(calculator, /metric="ABC4"/);
   assert.match(calculator, /ABC3 Contribution by Category/);
   assert.match(calculator, /metric="ABC3"/);
@@ -166,11 +219,15 @@ test("renders ABC4 categories as a negative-base waterfall chart", async () => {
   assert.match(calculator, /className="waterfall-body"/);
   assert.match(calculator, /className="waterfall-legend"/);
   assert.match(calculator, /className="waterfall-y-axis"/);
+  assert.match(calculator, /<div className="waterfall-summary">/);
+  assert.match(calculator, /<AbcRecommendation metric=\{metric\} value=\{finalTotal\}/);
   assert.match(calculator, /function CategoryLegendRow/);
   assert.match(calculator, /Σ=\{finalTotal\.toFixed\(1\)\}/);
   assert.doesNotMatch(calculator, /Ingredient Category<\/strong>|Positive stack<\/span>|Zero<\/span>/);
   assert.doesNotMatch(calculator, /<b>\{item\.abc4\.toFixed\(1\)\}<\/b><\/i>/);
   assert.doesNotMatch(calculator, /className="category-column-chart"/);
+  const styles = await read("app/globals.css");
+  assert.match(styles, /\.waterfall-category-row \{[^}]*padding: 3px 0;/);
 });
 
 test("keeps product copy in production-ready English", async () => {
@@ -193,7 +250,7 @@ test("uses English across product UI, metadata, and API messages", async () => {
   const productCopy = productFiles.join("\n");
   assert.doesNotMatch(productCopy, /[ăâđêôơưĂÂĐÊÔƠƯáàảãạéèẻẽẹíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừửữựýỳỷỹỵÁÀẢÃẠÉÈẺẼẸÍÌỈĨỊÓÒỎÕỌỐỒỔỖỘỚỜỞỠỢÚÙỦŨỤỨỪỬỮỰÝỲỶỸỴ]/);
   assert.doesNotMatch(productCopy, /vi-VN|lang="vi"/);
-  assert.match(productCopy, /Formula Results/);
+  assert.match(productCopy, /ABC Results Analysis/);
   assert.match(productCopy, /Ingredient Management/);
   assert.match(productCopy, /Sign In/);
 

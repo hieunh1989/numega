@@ -220,7 +220,7 @@ export default function Home() {
 
   const shareResult = async () => {
     const text = `Numega: Protein ${formatValue(totals["Crude Protein (%)"], "%")}% · ABC4 ${formatValue(totals["ABC4 (mEq/kg)"], "meq/kg")} meq/kg`;
-    if (navigator.share) await navigator.share({ title: "Numega Formula Results", text });
+    if (navigator.share) await navigator.share({ title: "Numega ABC Results Analysis", text });
     else await navigator.clipboard.writeText(text);
   };
 
@@ -246,6 +246,10 @@ export default function Home() {
   const topRange = Math.max(1, topMax - topMin);
   const topZero = topMax / topRange * 100;
   const negativeAbc4Rows = rows.filter((row) => row.inclusion > 0 && numberValue(row.ingredient, "ABC4 (mEq/kg)") < 0);
+  const hasLimestone = rows.some((row) => row.inclusion > 0 && (
+    row.ingredient["Ingredient ID"] === "ING-018"
+    || row.ingredient["Ingredient Name"].trim().toLowerCase() === "limestone"
+  ));
 
   return (
     <main className="app-shell">
@@ -318,7 +322,7 @@ export default function Home() {
         <section className="results-page">
           <header className="results-header">
             <button className="icon-button" onClick={() => setShowResults(false)} aria-label="Go back">←</button>
-            <div><span>Formula Results</span><small>Automatically updated from inclusion rates</small></div>
+            <div><span>ABC Results Analysis</span><small>Automatically updated from inclusion rates</small></div>
             <button className="icon-button" onClick={shareResult} aria-label="Share">↗</button>
           </header>
           <div className="results-content">
@@ -330,11 +334,14 @@ export default function Home() {
 
             {resultTab === "overview" && (
               <div className="result-stack">
-                <ResultSection title="General Indicators">
-                  <div className="metric-grid two">
-                    <Metric label="ABC3" value={formatValue(totals["ABC3 (mEq/kg)"], "meq/kg")} unit="meq/kg" />
-                    <Metric label="ABC4" value={formatValue(totals["ABC4 (mEq/kg)"], "meq/kg")} unit="meq/kg" />
+                <ResultSection title="Feed ABC Current Status">
+                  <div className="abc-gauge-grid">
+                    <AbcStatusGauge metric="ABC3" value={totals["ABC3 (mEq/kg)"]} excellentMin={150} excellentMax={300} acceptableMax={450} baseMax={600} hasLimestone={hasLimestone} />
+                    <AbcStatusGauge metric="ABC4" value={totals["ABC4 (mEq/kg)"]} excellentMin={350} excellentMax={500} acceptableMax={650} baseMax={800} hasLimestone={hasLimestone} />
                   </div>
+                </ResultSection>
+                <ResultSection title="Feed Quality Forecast">
+                  <FeedQualityForecast abc4={totals["ABC4 (mEq/kg)"]} />
                 </ResultSection>
                 <ResultSection title="Macro">
                   <div className="macro-grid">
@@ -381,11 +388,11 @@ export default function Home() {
                 </ResultSection>
 
                 <ResultSection title="ABC4 Contribution by Category">
-                  <CategoryWaterfallChart items={categoryResults} metric="ABC4" />
+                  <CategoryWaterfallChart items={categoryResults} metric="ABC4" hasLimestone={hasLimestone} />
                 </ResultSection>
 
                 <ResultSection title="ABC3 Contribution by Category">
-                  <CategoryWaterfallChart items={categoryResults} metric="ABC3" />
+                  <CategoryWaterfallChart items={categoryResults} metric="ABC3" hasLimestone={hasLimestone} />
                 </ResultSection>
 
                 <ResultSection title="Top 10 ABC4 Contributors">
@@ -464,7 +471,157 @@ function Metric({ label, value, unit }: { label: string; value: string; unit: st
   return <div className="metric"><span>{label}</span><div><strong>{value}</strong><small>{unit}</small></div></div>;
 }
 
-function CategoryWaterfallChart({ items, metric }: { items: CategoryResult[]; metric: ChartMetric }) {
+function abcStatus(value: number, excellentMax: number, acceptableMax: number) {
+  return value <= excellentMax
+    ? { label: "Excellent", className: "excellent" }
+    : value <= acceptableMax
+      ? { label: "Acceptable", className: "acceptable" }
+      : { label: "High Risk", className: "high-risk" };
+}
+
+function AbcRecommendation({
+  metric,
+  value,
+  excellentMax,
+  acceptableMax,
+  hasLimestone,
+}: {
+  metric: ChartMetric;
+  value: number;
+  excellentMax: number;
+  acceptableMax: number;
+  hasLimestone: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const status = abcStatus(value, excellentMax, acceptableMax);
+  const needsRecommendation = status.className !== "excellent";
+  const paraformicAmount = Math.max(0, (value - excellentMax) / 10);
+  const formattedParaformicAmount = paraformicAmount.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  const titleId = `${metric.toLowerCase()}-recommendation-${Math.round(value)}-title`;
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") setOpen(false); };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [open]);
+
+  if (!needsRecommendation) return null;
+
+  return (
+    <>
+      <button className="recommendation-trigger" type="button" onClick={() => setOpen(true)}>Recommendations</button>
+      {open && (
+        <div className="recommendation-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false); }}>
+          <section className="recommendation-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+            <header>
+              <div><span>{metric} Risk Alert</span><h3 id={titleId}>{status.label}</h3></div>
+              <button type="button" onClick={() => setOpen(false)} aria-label="Close recommendations">×</button>
+            </header>
+            <p>To improve the feed’s acid-binding capacity (ABC) profile, Numega recommends the following formulation adjustments:</p>
+            <ul className="recommendation-checklist">
+              {hasLimestone && <li><i aria-hidden="true">✓</i><span><strong>Reduce Limestone / Calcium Carbonate inclusion.</strong></span></li>}
+              <li><i aria-hidden="true">✓</i><span><strong>Highly Recommended:</strong> Add <strong>Acidifier (Paraformic Acid):</strong> <strong>{formattedParaformicAmount}</strong> <strong>kg/ton of feed</strong></span></li>
+            </ul>
+            <div className="recommendation-calculation">
+              <span>Optimization calculation</span>
+              <strong>({formatValue(value, "meq/kg")} − {excellentMax}) ÷ 10 = {formattedParaformicAmount} kg/ton</strong>
+            </div>
+            <button className="recommendation-close" type="button" onClick={() => setOpen(false)}>Close</button>
+          </section>
+        </div>
+      )}
+    </>
+  );
+}
+
+function AbcStatusGauge({
+  metric,
+  value,
+  excellentMin,
+  excellentMax,
+  acceptableMax,
+  baseMax,
+  hasLimestone,
+}: {
+  metric: ChartMetric;
+  value: number;
+  excellentMin: number;
+  excellentMax: number;
+  acceptableMax: number;
+  baseMax: number;
+  hasLimestone: boolean;
+}) {
+  const status = abcStatus(value, excellentMax, acceptableMax);
+  const scaleMax = Math.max(baseMax, Math.ceil(value * 1.1 / 50) * 50);
+  const position = Math.min(100, Math.max(0, value / scaleMax * 100));
+  const excellentWidth = excellentMax / scaleMax * 100;
+  const acceptableWidth = (acceptableMax - excellentMax) / scaleMax * 100;
+  const highRiskWidth = 100 - excellentWidth - acceptableWidth;
+  const accessibleLabel = `${metric} ${Math.round(value)} meq/kg. ${status.label}. Excellent ${excellentMin} to ${excellentMax}, acceptable above ${excellentMax} to ${acceptableMax}, and high risk above ${acceptableMax} meq/kg.`;
+
+  return (
+    <article className={`abc-gauge-card ${status.className}`}>
+      <header className="abc-gauge-header">
+        <div><span>{metric}</span><strong>{formatValue(value, "meq/kg")} <small>meq/kg</small></strong></div>
+        <AbcRecommendation metric={metric} value={value} excellentMax={excellentMax} acceptableMax={acceptableMax} hasLimestone={hasLimestone} />
+      </header>
+        <div className="abc-gauge-visual" role="img" aria-label={accessibleLabel}>
+          <div className="abc-gauge-marker" style={{ left: `${position}%` }} aria-hidden="true">
+            <span>{formatValue(value, "meq/kg")}</span><i />
+          </div>
+          <div className="abc-gauge-track" aria-hidden="true">
+            <i className="excellent" style={{ width: `${excellentWidth}%` }} />
+            <i className="acceptable" style={{ width: `${acceptableWidth}%` }} />
+            <i className="high-risk" style={{ width: `${highRiskWidth}%` }} />
+          </div>
+          <div className="abc-gauge-ticks" aria-hidden="true">
+            <span style={{ left: "0%" }}>0</span>
+            <span style={{ left: `${excellentMax / scaleMax * 100}%` }}>{excellentMax}</span>
+            <span style={{ left: `${acceptableMax / scaleMax * 100}%` }}>{acceptableMax}</span>
+            <span style={{ left: "100%" }}>{scaleMax}</span>
+          </div>
+        </div>
+        <div className="abc-gauge-status">
+          <span>Current status</span>
+          <strong className={status.className}><i />{status.label}</strong>
+        </div>
+        <div className="abc-gauge-legend" aria-label={`${metric} recommended ranges`}>
+          <div><i className="excellent" /><span><b>Excellent</b><small>{excellentMin}–{excellentMax} meq/kg</small></span></div>
+          <div><i className="acceptable" /><span><b>Acceptable</b><small>&gt;{excellentMax}–{acceptableMax} meq/kg</small></span></div>
+          <div><i className="high-risk" /><span><b>High Risk</b><small>&gt;{acceptableMax} meq/kg</small></span></div>
+        </div>
+    </article>
+  );
+}
+
+function FeedQualityForecast({ abc4 }: { abc4: number }) {
+  const status = abcStatus(abc4, 500, 650);
+  const rating = status.className === "excellent" ? 5 : status.className === "acceptable" ? 3 : 1;
+  const indicators = ["Salmonella control", "Feed hygiene", "Protein digestion", "Buffering reduction"];
+
+  return (
+    <div className={`feed-quality-forecast ${status.className}`}>
+      <header>
+        <div><span>Forecast based on ABC4</span><strong>{formatValue(abc4, "meq/kg")} <small>meq/kg</small></strong></div>
+        <span className="feed-quality-status"><i />{status.label}</span>
+      </header>
+      <div className="feed-quality-list">
+        {indicators.map((indicator) => (
+          <div className="feed-quality-row" key={indicator}>
+            <span>{indicator}</span>
+            <div className="quality-stars" role="img" aria-label={`${indicator}: ${rating} out of 5 stars`}>
+              {Array.from({ length: 5 }, (_, index) => <i className={index < rating ? "filled" : ""} key={index}>★</i>)}
+            </div>
+          </div>
+        ))}
+      </div>
+      <p>Quality forecast uses the ABC4 status only: Excellent earns 5 stars, Acceptable 3 stars, and High Risk 1 star.</p>
+    </div>
+  );
+}
+
+function CategoryWaterfallChart({ items, metric, hasLimestone }: { items: CategoryResult[]; metric: ChartMetric; hasLimestone: boolean }) {
   const negativeColors = ["#dc3f32", "#e8732f", "#b82f52"];
   const positiveColors = ["#48545d", "#8d321e", "#2f806c", "#c29426", "#547faf", "#785ca0"];
   const chartItems = items.map((item) => ({ category: item.category, value: metric === "ABC3" ? item.abc3 : item.abc4 }));
@@ -498,10 +655,15 @@ function CategoryWaterfallChart({ items, metric }: { items: CategoryResult[]; me
   });
   const legendItems = [...negativeItems, ...positiveItems, ...zeroItems];
   const accessibleSummary = `${metric} category waterfall. Negative total ${negativeTotal.toFixed(1)} meq/kg. Positive categories start at the negative total. Final total ${finalTotal.toFixed(1)} meq/kg.`;
+  const excellentMax = metric === "ABC3" ? 300 : 500;
+  const acceptableMax = metric === "ABC3" ? 450 : 650;
 
   return (
     <div className="waterfall-chart">
-      <div className="waterfall-summary"><span>Current</span><strong>{finalTotal.toFixed(1)} <small>meq/kg</small></strong></div>
+      <div className="waterfall-summary">
+        <div><span>Current</span><strong>{finalTotal.toFixed(1)} <small>meq/kg</small></strong></div>
+        <AbcRecommendation metric={metric} value={finalTotal} excellentMax={excellentMax} acceptableMax={acceptableMax} hasLimestone={hasLimestone} />
+      </div>
       <div className="waterfall-body">
         <div className="waterfall-plot" role="img" aria-label={accessibleSummary}>
           <div className="waterfall-chart-area">
@@ -517,7 +679,7 @@ function CategoryWaterfallChart({ items, metric }: { items: CategoryResult[]; me
             </div>
           </div>
         </div>
-        <aside className="waterfall-legend" aria-label="ABC4 contribution values by ingredient category">
+        <aside className="waterfall-legend" aria-label={`${metric} contribution values by ingredient category`}>
           {legendItems.map((item) => <CategoryLegendRow item={item} key={item.category} />)}
         </aside>
       </div>

@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Numega · Feed Formula Calculator",
+  title: "Numega · Feed ABC Optimizer",
   description: "A PWA for calculating animal feed formulas online and offline.",
   applicationName: "Numega",
   manifest: "/manifest.webmanifest",
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
   openGraph: {
-    title: "Numega · Feed Formula Calculator",
+    title: "Numega · Feed ABC Optimizer",
     description: "Build formulas, review nutrition, and analyze ingredient contributions even while offline.",
     type: "website",
   },
