@@ -172,16 +172,16 @@ test("renders ABC3 and ABC4 status gauges from zero with risk thresholds", async
   assert.match(calculator, /Acidifier \(Paraformic Acid\)/);
   assert.match(calculator, /row\.ingredient\["Ingredient ID"\] === "ING-018"/);
   assert.match(calculator, /Ingredient Name"\]\.trim\(\)\.toLowerCase\(\) === "limestone"/);
-  assert.match(calculator, /recommendation-checklist/);
-  assert.match(calculator, /\{hasLimestone && <li><i aria-hidden="true">✓<\/i><span><strong>Reduce Limestone \/ Calcium Carbonate inclusion\.<\/strong><\/span><\/li>\}/);
-  assert.match(calculator, /<li><i aria-hidden="true">✓<\/i><span><strong>Highly Recommended:/);
+  assert.match(calculator, /recommendation-limestone/);
+  assert.match(calculator, /\{hasLimestone && <p className="recommendation-limestone"><strong>Reduce Limestone \/ Calcium Carbonate inclusion\.<\/strong><\/p>\}/);
+  assert.match(calculator, /<div className="recommendation-primary">/);
+  assert.doesNotMatch(calculator, /Optimization calculation|recommendation-checklist|aria-hidden="true">✓/);
   assert.match(styles, /\.abc-gauge-track/);
   assert.match(styles, /\.abc-gauge-marker/);
   assert.match(styles, /\.recommendation-dialog/);
-  assert.match(styles, /\.recommendation-checklist li > i/);
-  assert.match(styles, /\.recommendation-checklist li \{ display: flex;/);
-  assert.match(styles, /column-gap: 12px/);
-  assert.match(styles, /background: var\(--primary\); color: white/);
+  assert.match(styles, /\.recommendation-primary \{[^}]*border: 1px solid #e0ebe5;[^}]*background: #f3f8f5;/);
+  assert.doesNotMatch(styles, /\.recommendation-checklist|\.recommendation-calculation/);
+  assert.match(styles, /\.abc-gauge-header > div > span \{ color: var\(--primary\);/);
   assert.match(styles, /\.abc-gauge-grid \{ grid-template-columns: 1fr; \}/);
 });
 
@@ -220,6 +220,7 @@ test("renders ABC4 categories as a negative-base waterfall chart", async () => {
   assert.match(calculator, /className="waterfall-legend"/);
   assert.match(calculator, /className="waterfall-y-axis"/);
   assert.match(calculator, /<div className="waterfall-summary">/);
+  assert.match(calculator, /<div className="waterfall-current-status"><span>Current status<\/span><strong className=\{status\.className\}>/);
   assert.match(calculator, /<AbcRecommendation metric=\{metric\} value=\{finalTotal\}/);
   assert.match(calculator, /function CategoryLegendRow/);
   assert.match(calculator, /Σ=\{finalTotal\.toFixed\(1\)\}/);

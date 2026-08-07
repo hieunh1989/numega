@@ -519,13 +519,9 @@ function AbcRecommendation({
               <button type="button" onClick={() => setOpen(false)} aria-label="Close recommendations">×</button>
             </header>
             <p>To improve the feed’s acid-binding capacity (ABC) profile, Numega recommends the following formulation adjustments:</p>
-            <ul className="recommendation-checklist">
-              {hasLimestone && <li><i aria-hidden="true">✓</i><span><strong>Reduce Limestone / Calcium Carbonate inclusion.</strong></span></li>}
-              <li><i aria-hidden="true">✓</i><span><strong>Highly Recommended:</strong> Add <strong>Acidifier (Paraformic Acid):</strong> <strong>{formattedParaformicAmount}</strong> <strong>kg/ton of feed</strong></span></li>
-            </ul>
-            <div className="recommendation-calculation">
-              <span>Optimization calculation</span>
-              <strong>({formatValue(value, "meq/kg")} − {excellentMax}) ÷ 10 = {formattedParaformicAmount} kg/ton</strong>
+            {hasLimestone && <p className="recommendation-limestone"><strong>Reduce Limestone / Calcium Carbonate inclusion.</strong></p>}
+            <div className="recommendation-primary">
+              <span><strong>Highly Recommended:</strong> Add <strong>Acidifier (Paraformic Acid):</strong> <strong>{formattedParaformicAmount}</strong> <strong>kg/ton of feed</strong></span>
             </div>
             <button className="recommendation-close" type="button" onClick={() => setOpen(false)}>Close</button>
           </section>
@@ -657,11 +653,16 @@ function CategoryWaterfallChart({ items, metric, hasLimestone }: { items: Catego
   const accessibleSummary = `${metric} category waterfall. Negative total ${negativeTotal.toFixed(1)} meq/kg. Positive categories start at the negative total. Final total ${finalTotal.toFixed(1)} meq/kg.`;
   const excellentMax = metric === "ABC3" ? 300 : 500;
   const acceptableMax = metric === "ABC3" ? 450 : 650;
+  const status = abcStatus(finalTotal, excellentMax, acceptableMax);
 
   return (
     <div className="waterfall-chart">
       <div className="waterfall-summary">
-        <div><span>Current</span><strong>{finalTotal.toFixed(1)} <small>meq/kg</small></strong></div>
+        <div className="waterfall-current">
+          <span>Current</span>
+          <strong>{finalTotal.toFixed(1)} <small>meq/kg</small></strong>
+          <div className="waterfall-current-status"><span>Current status</span><strong className={status.className}><i />{status.label}</strong></div>
+        </div>
         <AbcRecommendation metric={metric} value={finalTotal} excellentMax={excellentMax} acceptableMax={acceptableMax} hasLimestone={hasLimestone} />
       </div>
       <div className="waterfall-body">

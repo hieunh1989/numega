@@ -143,7 +143,7 @@ button:disabled { cursor: not-allowed; }
 .abc-gauge-card { min-width: 0; padding: 18px; border: 1px solid #e2e8e4; border-radius: 16px; background: linear-gradient(145deg,#fff 0%,#fbfdfc 100%); box-shadow: 0 5px 16px rgba(35,61,48,.055); }
 .abc-gauge-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .abc-gauge-header > div { display: grid; gap: 2px; }
-.abc-gauge-header > div > span { color: #193a2b; font-size: 17px; font-weight: 850; }
+.abc-gauge-header > div > span { color: var(--primary); font-size: 17px; font-weight: 850; }
 .abc-gauge-header small { color: #77837d; font-size: 10px; font-weight: 650; }
 .abc-gauge-header > div > strong { color: #182b22; font-size: 21px; line-height: 1.1; letter-spacing: -.03em; white-space: nowrap; }
 .abc-gauge-header > div > strong small { font-size: 10px; letter-spacing: 0; }
@@ -190,13 +190,9 @@ button:disabled { cursor: not-allowed; }
 .recommendation-dialog h3 { margin: 0; color: #20372c; font-size: 25px; letter-spacing: -.025em; }
 .recommendation-dialog > header > button { width: 38px; height: 38px; flex: 0 0 auto; display: grid; place-items: center; border: 0; border-radius: 50%; background: #eef2ef; color: #425249; font-size: 25px; line-height: 1; }
 .recommendation-dialog > p { margin: 20px 0 12px; color: #4e5f56; font-size: 14px; line-height: 1.55; }
-.recommendation-checklist { margin: 0; padding: 0; display: grid; gap: 13px; color: #263a30; list-style: none; }
-.recommendation-checklist li { display: flex; align-items: flex-start; column-gap: 12px; font-size: 14px; line-height: 1.5; }
-.recommendation-checklist li > i { width: 24px; height: 24px; flex: 0 0 24px; display: grid; place-items: center; margin-top: 1px; border-radius: 50%; background: var(--primary); color: white; font-size: 13px; line-height: 1; font-style: normal; font-weight: 900; box-shadow: 0 3px 8px rgba(0,108,78,.2); }
-.recommendation-checklist li > span { min-width: 0; flex: 1 1 auto; display: block; padding-top: 1px; }
-.recommendation-calculation { display: grid; gap: 4px; margin-top: 18px; padding: 12px 14px; border-radius: 13px; background: #f3f8f5; border: 1px solid #e0ebe5; }
-.recommendation-calculation span { color: #728078; font-size: 10px; font-weight: 750; text-transform: uppercase; letter-spacing: .05em; }
-.recommendation-calculation strong { color: #194e37; font-size: 13px; }
+.recommendation-limestone { margin: 0 0 13px !important; color: #263a30 !important; font-size: 14px !important; line-height: 1.5 !important; }
+.recommendation-primary { margin-top: 13px; padding: 12px 14px; border: 1px solid #e0ebe5; border-radius: 13px; background: #f3f8f5; color: #263a30; font-size: 14px; line-height: 1.5; }
+.recommendation-primary strong { color: #194e37; }
 .recommendation-close { width: 100%; min-height: 44px; margin-top: 18px; border: 0; border-radius: 12px; background: var(--primary); color: white; font-weight: 800; }
 @keyframes recommendation-in { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
 .feed-quality-forecast > header { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding-bottom: 14px; border-bottom: 1px solid #e9eeeb; }
@@ -244,6 +240,16 @@ button:disabled { cursor: not-allowed; }
 .waterfall-summary > div > span { font-size: 12px; font-weight: 750; }
 .waterfall-summary > div > strong { font-size: 18px; }
 .waterfall-summary small { color: #65736c; font-size: 10px; font-weight: 650; }
+.waterfall-current > .waterfall-current-status { display: flex; align-items: center; gap: 7px; margin-top: 7px; }
+.waterfall-current-status > span { color: #728078; font-size: 10px; font-weight: 700; }
+.waterfall-current-status > strong { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 99px; font-size: 10px; }
+.waterfall-current-status > strong i { width: 7px; height: 7px; border-radius: 50%; }
+.waterfall-current-status > strong.excellent { color: #17783a; background: #e5f8eb; }
+.waterfall-current-status > strong.excellent i { background: #2eb85c; }
+.waterfall-current-status > strong.acceptable { color: #805f00; background: #fff5cc; }
+.waterfall-current-status > strong.acceptable i { background: #f3c63f; }
+.waterfall-current-status > strong.high-risk { color: #a61f2e; background: #fde9eb; }
+.waterfall-current-status > strong.high-risk i { background: #db3e4d; }
 .waterfall-body { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(0,1fr); gap: 12px; align-items: stretch; }
 .waterfall-plot { position: relative; height: 310px; overflow: hidden; }
 .waterfall-chart-area { position: absolute; inset: 8px 0; }
