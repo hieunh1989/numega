@@ -152,7 +152,7 @@ test("shows ABC3 and ABC4 in the category contribution table", async () => {
   assert.doesNotMatch(calculator, /% Contribution<\/span>/);
 });
 
-test("renders ABC3 and ABC4 status gauges from zero with risk thresholds", async () => {
+test("renders ABC3 and ABC4 status gauges with their risk thresholds", async () => {
   const [calculator, styles] = await Promise.all([
     read("app/page.tsx"),
     read("app/globals.css"),
@@ -160,21 +160,26 @@ test("renders ABC3 and ABC4 status gauges from zero with risk thresholds", async
   assert.match(calculator, /function AbcStatusGauge/);
   assert.match(calculator, /function AbcRecommendation/);
   assert.match(calculator, /Feed ABC Current Status/);
-  assert.match(calculator, /metric="ABC3"[^>]+excellentMin=\{150\}[^>]+excellentMax=\{300\}[^>]+acceptableMax=\{450\}/);
-  assert.match(calculator, /metric="ABC4"[^>]+excellentMin=\{350\}[^>]+excellentMax=\{500\}[^>]+acceptableMax=\{650\}/);
-  assert.match(calculator, /<span style=\{\{ left: "0%" \}\}>0<\/span>/);
+  assert.match(calculator, /metric="ABC3"[^>]+excellentMin=\{500\}[^>]+excellentMax=\{600\}[^>]+acceptableMax=\{650\}[^>]+scaleMin=\{500\}[^>]+baseMax=\{700\}[^>]+expandScale=\{false\}/);
+  assert.match(calculator, /metric="ABC4"[^>]+excellentMin=\{250\}[^>]+excellentMax=\{350\}[^>]+acceptableMax=\{450\}[^>]+scaleMin=\{250\}[^>]+showScaleMaximum=\{false\}/);
+  assert.match(calculator, /<span style=\{\{ left: "0%" \}\}>\{scaleMin\}<\/span>/);
+  assert.match(calculator, /\{showScaleMaximum && <span className="scale-maximum" style=\{\{ left: "100%" \}\}>\{scaleMax\}<\/span>\}/);
   assert.match(calculator, /Current status/);
   assert.match(calculator, /High Risk/);
   assert.doesNotMatch(calculator, /<small>Current value<\/small>/);
   assert.match(calculator, /Recommendations/);
-  assert.match(calculator, /\(value - excellentMax\) \/ 10/);
+  assert.match(calculator, /const optimizationMax = metric === "ABC3" \? 700 : acceptableMax/);
+  assert.match(calculator, /\(value - optimizationMax\) \/ 12\.4/);
+  assert.doesNotMatch(calculator, /\(value - excellentMax\) \/ 10/);
   assert.match(calculator, /ABC\) profile, Numega recommends/);
   assert.match(calculator, /Acidifier \(Paraformic Acid\)/);
   assert.match(calculator, /row\.ingredient\["Ingredient ID"\] === "ING-018"/);
   assert.match(calculator, /Ingredient Name"\]\.trim\(\)\.toLowerCase\(\) === "limestone"/);
   assert.match(calculator, /recommendation-limestone/);
-  assert.match(calculator, /\{hasLimestone && <p className="recommendation-limestone"><strong>Reduce Limestone \/ Calcium Carbonate inclusion\.<\/strong><\/p>\}/);
+  assert.match(calculator, /\{hasLimestone && <p className="recommendation-limestone"><strong>Reduce Limestone inclusion\.<\/strong><\/p>\}/);
+  assert.doesNotMatch(calculator, /Calcium Carbonate/);
   assert.match(calculator, /<div className="recommendation-primary">/);
+  assert.match(calculator, /<strong>Highly Recommended:<\/strong>\s*<span>Add <strong>Acidifier/);
   assert.doesNotMatch(calculator, /Optimization calculation|recommendation-checklist|aria-hidden="true">✓/);
   assert.match(styles, /\.abc-gauge-track/);
   assert.match(styles, /\.abc-gauge-marker/);
@@ -192,7 +197,7 @@ test("forecasts feed quality stars from ABC4 status only", async () => {
   ]);
   assert.match(calculator, /Feed Quality Forecast/);
   assert.match(calculator, /function FeedQualityForecast\(\{ abc4 \}/);
-  assert.match(calculator, /abcStatus\(abc4, 500, 650\)/);
+  assert.match(calculator, /abcStatus\(abc4, 350, 450, "ABC4"\)/);
   assert.match(calculator, /className === "excellent" \? 5 : status\.className === "acceptable" \? 3 : 1/);
   assert.match(calculator, /Salmonella control/);
   assert.match(calculator, /Feed hygiene/);
