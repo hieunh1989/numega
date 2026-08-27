@@ -112,6 +112,8 @@ test("loads calculator categories from PostgreSQL and honors the admin visibilit
   ]);
   assert.match(database, /show_in_calculator BOOLEAN NOT NULL DEFAULT TRUE/);
   assert.match(database, /icon TEXT NOT NULL DEFAULT '\/icons\/categories\/others\.png'/);
+  assert.match(database, /INSERT INTO categories[\s\S]+ON CONFLICT \(id\) DO NOTHING/);
+  assert.doesNotMatch(database, /ON CONFLICT \(id\) DO UPDATE SET slug=EXCLUDED\.slug, name=EXCLUDED\.name/);
   assert.match(categoriesApi, /calculatorOnly/);
   assert.match(categoriesApi, /c\.show_in_calculator=TRUE/);
   assert.match(categoryApi, /show_in_calculator=\$5/);

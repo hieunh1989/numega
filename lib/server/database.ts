@@ -133,8 +133,7 @@ async function initializeDatabase() {
     await pool.query(
       `INSERT INTO categories (id, slug, name, description, sort_order, icon)
        VALUES ($1, $2, $3, $4, $5, $6)
-       ON CONFLICT (id) DO UPDATE SET slug=EXCLUDED.slug, name=EXCLUDED.name,
-       description=EXCLUDED.description, sort_order=EXCLUDED.sort_order`,
+       ON CONFLICT (id) DO NOTHING`,
       [slug, slug, name, description, sortOrder, icon],
     );
   }
