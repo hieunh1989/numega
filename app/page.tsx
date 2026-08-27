@@ -340,7 +340,7 @@ export default function Home() {
                     <AbcStatusGauge metric="ABC4" value={totals["ABC4 (mEq/kg)"]} excellentMin={250} excellentMax={350} acceptableMax={450} scaleMin={250} baseMax={800} showScaleMaximum={false} hasLimestone={hasLimestone} />
                   </div>
                 </ResultSection>
-                <ResultSection title="Feed Quality Forecast">
+                <ResultSection title="Feed Quality Forecast — Gastric Function">
                   <FeedQualityForecast abc4={totals["ABC4 (mEq/kg)"]} />
                 </ResultSection>
                 <ResultSection title="Macro">
@@ -520,7 +520,7 @@ function AbcRecommendation({
               <button type="button" onClick={() => setOpen(false)} aria-label="Close recommendations">×</button>
             </header>
             <p>To improve the feed’s acid-binding capacity (ABC) profile, Numega recommends the following formulation adjustments:</p>
-            {hasLimestone && <p className="recommendation-limestone"><strong>Reduce Limestone inclusion.</strong></p>}
+            {hasLimestone && <p className="recommendation-limestone"><strong>Reduce Calcium Carbonate CaCO3 inclusion.</strong></p>}
             <div className="recommendation-primary">
               <strong>Highly Recommended:</strong>
               <span>Add <strong>Acidifier (Paraformic Acid):</strong> <strong>{formattedParaformicAmount}</strong> <strong>kg/ton of feed</strong></span>
@@ -605,7 +605,12 @@ function AbcStatusGauge({
 function FeedQualityForecast({ abc4 }: { abc4: number }) {
   const status = abcStatus(abc4, 350, 450, "ABC4");
   const rating = status.className === "excellent" ? 5 : status.className === "acceptable" ? 3 : 1;
-  const indicators = ["Salmonella control", "Feed hygiene", "Protein digestion", "Buffering reduction"];
+  const indicators = [
+    "Feed Acidification Efficiency",
+    "Pepsin Activation Potential",
+    "Protein Acid Denaturation Potential",
+    "Gastric Pathogen Barrier (Salmonella)",
+  ];
 
   return (
     <div className={`feed-quality-forecast ${status.className}`}>
@@ -623,7 +628,7 @@ function FeedQualityForecast({ abc4 }: { abc4: number }) {
           </div>
         ))}
       </div>
-      <p>Quality forecast uses the ABC4 status only: Excellent earns 5 stars, Acceptable 3 stars, and High Risk 1 star.</p>
+      <p>Gastric function forecast uses the ABC4 status only: Excellent earns 5 stars, Acceptable 3 stars, and High Risk 1 star.</p>
     </div>
   );
 }

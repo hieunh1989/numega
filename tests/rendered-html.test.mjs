@@ -87,6 +87,7 @@ test("ships an installable PWA and a dedicated phone install route", async () =>
   assert.match(installPage, /Add to Home Screen/);
   assert.match(installPage, /CriOS/);
   assert.match(installPage, /Select “More”/);
+  assert.doesNotMatch(installPage, /install-app-icon|\/icons\/pwa\/icon-192\.png/);
   assert.match(serviceWorker, /\/install/);
 });
 
@@ -178,8 +179,7 @@ test("renders ABC3 and ABC4 status gauges with their risk thresholds", async () 
   assert.match(calculator, /row\.ingredient\["Ingredient ID"\] === "ING-018"/);
   assert.match(calculator, /Ingredient Name"\]\.trim\(\)\.toLowerCase\(\) === "limestone"/);
   assert.match(calculator, /recommendation-limestone/);
-  assert.match(calculator, /\{hasLimestone && <p className="recommendation-limestone"><strong>Reduce Limestone inclusion\.<\/strong><\/p>\}/);
-  assert.doesNotMatch(calculator, /Calcium Carbonate/);
+  assert.match(calculator, /\{hasLimestone && <p className="recommendation-limestone"><strong>Reduce Calcium Carbonate CaCO3 inclusion\.<\/strong><\/p>\}/);
   assert.match(calculator, /<div className="recommendation-primary">/);
   assert.match(calculator, /<strong>Highly Recommended:<\/strong>\s*<span>Add <strong>Acidifier/);
   assert.doesNotMatch(calculator, /Optimization calculation|recommendation-checklist|aria-hidden="true">✓/);
@@ -197,14 +197,15 @@ test("forecasts feed quality stars from ABC4 status only", async () => {
     read("app/page.tsx"),
     read("app/globals.css"),
   ]);
-  assert.match(calculator, /Feed Quality Forecast/);
+  assert.match(calculator, /Feed Quality Forecast — Gastric Function/);
   assert.match(calculator, /function FeedQualityForecast\(\{ abc4 \}/);
   assert.match(calculator, /abcStatus\(abc4, 350, 450, "ABC4"\)/);
   assert.match(calculator, /className === "excellent" \? 5 : status\.className === "acceptable" \? 3 : 1/);
-  assert.match(calculator, /Salmonella control/);
-  assert.match(calculator, /Feed hygiene/);
-  assert.match(calculator, /Protein digestion/);
-  assert.match(calculator, /Buffering reduction/);
+  assert.match(calculator, /Feed Acidification Efficiency/);
+  assert.match(calculator, /Pepsin Activation Potential/);
+  assert.match(calculator, /Protein Acid Denaturation Potential/);
+  assert.match(calculator, /Gastric Pathogen Barrier \(Salmonella\)/);
+  assert.doesNotMatch(calculator, /Salmonella control|Feed hygiene|Protein digestion|Buffering reduction/);
   assert.match(calculator, /\{rating\} out of 5 stars/);
   assert.match(styles, /\.feed-quality-row/);
   assert.match(styles, /\.quality-stars i\.filled/);

@@ -92,10 +92,6 @@ export default function InstallPage() {
           <Image src="/numega-logo.png" alt="Numega" width={588} height={126} priority />
         </Link>
 
-        <div className="install-app-icon" aria-hidden="true">
-          <Image src="/icons/pwa/icon-192.png" alt="" width={192} height={192} priority />
-        </div>
-
         {platform === "loading" && (
           <div className="install-copy">
             <span className="install-eyebrow">NUMEGA PWA</span>

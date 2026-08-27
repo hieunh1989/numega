@@ -26,9 +26,7 @@ button:disabled { cursor: not-allowed; }
 .install-card { width: min(460px,100%); border: 1px solid #d9e6df; border-radius: 30px; padding: 24px clamp(20px,6vw,34px) 22px; background: rgba(255,255,255,.96); box-shadow: 0 24px 80px rgba(16,69,49,.13); text-align: center; }
 .install-wordmark { display: block; width: fit-content; margin: 0 auto; }
 .install-wordmark img { display: block; width: min(156px,44vw); height: auto; }
-.install-app-icon { width: 104px; height: 104px; margin: 30px auto 22px; border-radius: 25px; box-shadow: 0 14px 34px rgba(0,108,78,.22); overflow: hidden; }
-.install-app-icon img { display: block; width: 100%; height: 100%; }
-.install-copy { margin-bottom: 24px; }
+.install-copy { margin: 26px 0 24px; }
 .install-eyebrow { color: var(--primary); font-size: 10px; font-weight: 900; letter-spacing: .13em; }
 .install-copy h1 { margin: 7px 0 10px; font-size: clamp(25px,7vw,34px); line-height: 1.08; letter-spacing: -.045em; }
 .install-copy p { margin: 0; color: #687a70; font-size: 14px; line-height: 1.6; }
