@@ -523,7 +523,7 @@ function AbcRecommendation({
             {hasLimestone && <p className="recommendation-limestone"><strong>Reduce Calcium Carbonate CaCO3 inclusion.</strong></p>}
             <div className="recommendation-primary">
               <strong>Highly Recommended:</strong>
-              <span>Add <strong>Acidifier (Paraformic Acid):</strong> <strong>{formattedParaformicAmount}</strong> <strong>kg/ton of feed</strong></span>
+              <span>Add <strong>Acidifier (MEGACID):</strong> <strong>{formattedParaformicAmount}</strong> <strong>kg/ton of feed</strong></span>
             </div>
             <button className="recommendation-close" type="button" onClick={() => setOpen(false)}>Close</button>
           </section>

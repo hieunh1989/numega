@@ -175,7 +175,7 @@ test("renders ABC3 and ABC4 status gauges with their risk thresholds", async () 
   assert.match(calculator, /\(value - optimizationMax\) \/ 12\.4/);
   assert.doesNotMatch(calculator, /\(value - excellentMax\) \/ 10/);
   assert.match(calculator, /ABC\) profile, Numega recommends/);
-  assert.match(calculator, /Acidifier \(Paraformic Acid\)/);
+  assert.match(calculator, /Acidifier \(MEGACID\)/);
   assert.match(calculator, /row\.ingredient\["Ingredient ID"\] === "ING-018"/);
   assert.match(calculator, /Ingredient Name"\]\.trim\(\)\.toLowerCase\(\) === "limestone"/);
   assert.match(calculator, /recommendation-limestone/);
